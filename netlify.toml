@@ -12,7 +12,7 @@
   status = 200
 
 [context.production.environment]
-  VITE_BACKEND_URL = "https://planning-poker-backend-dxkk.onrender.comm"
+  VITE_BACKEND_URL = "https://planning-poker-backend-dxkk.onrender.com"
 
 [context.deploy-preview.environment]
   VITE_BACKEND_URL = "https://planning-poker-backend-dxkk.onrender.com"
