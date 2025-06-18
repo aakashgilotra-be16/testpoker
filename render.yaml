@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: planning-poker-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: planning-poker-backend
+          property: port
+    healthCheckPath: /health
+    autoDeploy: true
+    rootDir: ./
+    buildFilter:
+      paths:
+        - server/**
+        - package.json
+        - package-lock.json
