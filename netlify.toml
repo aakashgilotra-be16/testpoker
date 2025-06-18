@@ -4,7 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  VITE_BACKEND_URL = "https://random-backend-xyz123.onrender.com"
+  VITE_BACKEND_URL = "https://planning-poker-backend-dxkk.onrender.com"
 
 [[redirects]]
   from = "/*"
@@ -12,13 +12,13 @@
   status = 200
 
 [context.production.environment]
-  VITE_BACKEND_URL = "https://random-backend-xyz123.onrender.com"
+  VITE_BACKEND_URL = "https://planning-poker-backend-dxkk.onrender.comm"
 
 [context.deploy-preview.environment]
-  VITE_BACKEND_URL = "https://random-backend-xyz123.onrender.com"
+  VITE_BACKEND_URL = "https://planning-poker-backend-dxkk.onrender.com"
 
 [context.branch-deploy.environment]
-  VITE_BACKEND_URL = "https://random-backend-xyz123.onrender.com"
+  VITE_BACKEND_URL = "https://planning-poker-backend-dxkk.onrender.com"
 
 # Headers for better performance and security
 [[headers]]
