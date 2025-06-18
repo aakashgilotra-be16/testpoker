@@ -11,7 +11,7 @@ app.use(cors({
   origin: [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://random-frontend-abc456.netlify.app",
+    "planning-poker-pt.netlify.app",
     /\.netlify\.app$/,
     /\.onrender\.com$/
   ],
@@ -23,7 +23,7 @@ const io = new Server(server, {
     origin: [
       "http://localhost:5173",
       "http://localhost:3000", 
-      "https://random-frontend-abc456.netlify.app",
+      "planning-poker-pt.netlify.app",
       /\.netlify\.app$/,
       /\.onrender\.com$/
     ],
@@ -48,7 +48,7 @@ app.get('/', (req, res) => {
     status: 'Planning Poker Backend is running!',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    url: 'https://random-backend-xyz123.onrender.com',
+    url: 'https://planning-poker-backend-dxkk.onrender.com',
     connections: io.engine.clientsCount || 0,
     transport: 'Socket.IO Server Ready',
     version: '1.0.0',
@@ -62,7 +62,7 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     connections: io.engine.clientsCount || 0,
-    url: 'https://random-backend-xyz123.onrender.com',
+    url: 'https://planning-poker-backend-dxkk.onrender.com',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development'
