@@ -464,9 +464,9 @@ server.on('error', (error) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Socket.IO server running on port ${PORT}`);
-  console.log(`📡 Backend URL: https://random-backend-xyz123.onrender.com`);
-  console.log(`🏥 Health check: https://random-backend-xyz123.onrender.com/health`);
-  console.log(`🧪 Test endpoint: https://random-backend-xyz123.onrender.com/test`);
+  console.log(`📡 Backend URL: https://planning-poker-backend-dxkk.onrender.com`);
+  console.log(`🏥 Health check: https://planning-poker-backend-dxkk.onrender.com/health`);
+  console.log(`🧪 Test endpoint: https://planning-poker-backend-dxkk.onrender.com/test`);
   console.log(`🔧 Transport modes: polling, websocket`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
@@ -488,7 +488,7 @@ setInterval(() => {
 if (process.env.NODE_ENV === 'production') {
   setInterval(async () => {
     try {
-      const response = await fetch('https://random-backend-xyz123.onrender.com/wake');
+      const response = await fetch('https://planning-poker-backend-dxkk.onrender.com/wake');
       console.log('Self-ping successful:', response.status);
     } catch (error) {
       console.log('Self-ping failed:', error.message);
