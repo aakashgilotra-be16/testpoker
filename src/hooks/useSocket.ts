@@ -245,7 +245,7 @@ export const useSocket = () => {
               storyId: data.storyId,
               userId: data.userId || 'unknown', // Fallback if userId not available
               displayName: data.voterName,
-              voteValue: '?', // Placeholder until votes are revealed
+              voteValue: data.value || '?', // Use the actual vote value if available, otherwise placeholder
               submittedAt: new Date().toISOString()
             });
           }
@@ -260,16 +260,23 @@ export const useSocket = () => {
         console.log('Users who voted:', data.userVotes);
         
         // We don't have the actual vote values yet, but we know who has voted
+        // If the current user is voting, we should show their selection immediately
         return {
           ...prev,
-          [data.storyId]: data.userVotes.map((voter: { userId: string; displayName: string }) => ({
-            id: `${data.storyId}_${voter.displayName}`,
-            storyId: data.storyId,
-            userId: voter.userId,
-            displayName: voter.displayName,
-            voteValue: '?', // Placeholder until votes are revealed
-            submittedAt: new Date().toISOString()
-          }))
+          [data.storyId]: data.userVotes.map((voter: { userId: string; displayName: string; value?: string }) => {
+            // For the current user who just voted, show their actual vote value
+            const isCurrentUser = voter.displayName === data.voterName && data.value;
+            
+            return {
+              id: `${data.storyId}_${voter.displayName}`,
+              storyId: data.storyId,
+              userId: voter.userId,
+              displayName: voter.displayName,
+              // Use the actual vote value for the current user if available
+              voteValue: isCurrentUser ? data.value : (voter.value || '?'),
+              submittedAt: new Date().toISOString()
+            };
+          })
         };
       });
     });
@@ -403,6 +410,7 @@ export const useSocket = () => {
 
   const submitVote = (storyId: string, value: string) => {
     if (socketRef.current && socketRef.current.connected) {
+      console.log(`Submitting vote for story ${storyId}: ${value}`);
       socketRef.current.emit('submit_vote', { storyId, value });
     } else {
       setError('Not connected to server');

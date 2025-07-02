@@ -86,8 +86,17 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
   // Find user's vote
   useEffect(() => {
     if (user && votes) {
-      const userVote = votes.find(vote => vote.displayName === user.displayName);
-      setSelectedVote(userVote?.voteValue || '');
+      const userVote = votes.find(vote => 
+        // Try to match by userId first, then by displayName
+        (vote.userId && user.id && vote.userId === user.id) || 
+        vote.displayName === user.displayName
+      );
+      
+      // Only update if we have a different vote value or no selected vote yet
+      if (userVote && (userVote.voteValue !== '?' || !selectedVote)) {
+        console.log(`Found user's vote: ${userVote.voteValue}`);
+        setSelectedVote(userVote.voteValue);
+      }
     }
   }, [votes, user]);
 
@@ -206,8 +215,9 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
     if (!session || session.votesRevealed) return;
     setSubmitLoading(true);
     try {
-      actions.submitVote(story.id, value);
+      // Immediately update the UI to show the selected vote
       setSelectedVote(value);
+      actions.submitVote(story.id, value);
       showToast('Your vote has been submitted', 'success');
     } catch (error) {
       console.error('Error submitting vote:', error);
@@ -346,7 +356,7 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
               </div>
               
               {/* Progress bar */}
-              {!session.votesRevealed && connectedUsers.length > 0 && (
+              {session && !session.votesRevealed && connectedUsers.length > 0 && (
                 <div className="flex-1 max-w-xs">
                   <div className="flex items-center mb-1 justify-between text-xs">
                     <span className="text-gray-600">
@@ -396,7 +406,7 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
                   Settings
                 </button>
 
-                {!isTimerActive && !session.votesRevealed && (
+                {!isTimerActive && session && !session.votesRevealed && (
                   <button
                     onClick={() => actions.startTimer(story.id, timerDuration)}
                     className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium flex items-center"
@@ -420,7 +430,7 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
                   onClick={() => {
                     setRevealLoading(true);
                     try {
-                      actions.revealVotes(story.id, !session.votesRevealed);
+                      actions.revealVotes(story.id, session ? !session.votesRevealed : true);
                       showToast(session.votesRevealed ? 'Votes are now hidden' : 'Votes revealed', 'info');
                     } catch (error) {
                       console.error('Error toggling vote visibility:', error);
@@ -434,12 +444,12 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
                 >
                   {revealLoading ? (
                     <Spinner size="sm" className="mr-2" />
-                  ) : session.votesRevealed ? (
+                  ) : session && session.votesRevealed ? (
                     <EyeOff className="w-4 h-4 mr-2" />
                   ) : (
                     <Eye className="w-4 h-4 mr-2" />
                   )}
-                  {session.votesRevealed ? 'Hide Votes' : 'Reveal Votes'}
+                  {session && session.votesRevealed ? 'Hide Votes' : 'Reveal Votes'}
                 </button>
 
                 <button
@@ -546,27 +556,6 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
                       )}
                     </span>
                   );
-                  
-                  return (
-                    <span
-                      key={index}
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        hasVoted 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      <div className={`w-2 h-2 ${
-                        hasVoted 
-                          ? 'bg-green-400' 
-                          : 'bg-gray-400'
-                      } rounded-full mr-1`}></div>
-                      {participant.displayName}
-                      {hasVoted && !session.votesRevealed && (
-                        <span className="ml-1 text-xs text-green-600">✓</span>
-                      )}
-                    </span>
-                  );
                 })}
               </div>
             </div>
@@ -587,7 +576,7 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
               <button
                 key={value}
                 onClick={() => handleSubmitVote(value)}
-                disabled={session.votesRevealed || submitLoading}
+                disabled={(session && session.votesRevealed) || submitLoading}
                 className={`aspect-[3/4] rounded-lg border-2 font-bold text-lg transition-all duration-200 ${
                   selectedVote === value
                     ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg scale-105'
@@ -601,14 +590,14 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
                 ) : null}
                 {value}
                 {selectedVote === value && !submitLoading && (
-                  <span className="absolute bottom-1 right-1 text-xs text-green-600">✓</span>
+                  <span className="absolute bottom-1 right-1 text-xs text-green-600 animate-pulse">✓</span>
                 )}
               </button>
             ))}
           </div>
 
           {/* Vote Results */}
-          {session.votesRevealed && votes.length > 0 && (
+          {session && session.votesRevealed && votes.length > 0 && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-lg border border-gray-200">
@@ -664,7 +653,7 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
           )}
 
           {/* Waiting for votes or all votes received notification */}
-          {!session.votesRevealed && (
+          {session && !session.votesRevealed && (
             <>
               {votes.length > 0 && votes.length >= connectedUsers.length ? (
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
