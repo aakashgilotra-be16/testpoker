@@ -206,18 +206,72 @@ export const useSocket = () => {
 
     // Voting events
     socketRef.current.on('voting_session_started', (session) => {
-      setVotingSessions(prev => ({ ...prev, [session.storyId]: session }));
+      console.log(`🗳️ Voting session started for story ID: ${session.storyId}, session ID: ${session.id}`);
+      setVotingSessions(prev => {
+        const updated = { ...prev };
+        updated[session.storyId] = session;
+        return updated;
+      });
       setVotes(prev => ({ ...prev, [session.storyId]: [] }));
-      console.log('🗳️ Voting session started for story:', session.storyId);
     });
 
     socketRef.current.on('vote_submitted', (data) => {
-      // Update vote count without revealing actual votes
-      setVotes(prev => ({
-        ...prev,
-        [data.storyId]: prev[data.storyId] || []
-      }));
-      console.log('✅ Vote submitted for story:', data.storyId);
+      // Update the votes state with the new information about who has voted
+      // (we'll still hide the actual vote values until revealed)
+      setVotes(prev => {
+        // Track who has voted for this story 
+        console.log(`Vote submitted for story ${data.storyId}: ${data.voterName} (${data.voteCount || 0}/${data.totalUsers || 0} votes)`);
+        
+        // Check if userVotes is available from server (backward compatibility)
+        if (!data.userVotes) {
+          console.log('userVotes not available in server response - using legacy mode');
+          // Backward compatibility: if server hasn't been updated, just add the single vote
+          // Get the existing votes for this story
+          const existingVotes = [...(prev[data.storyId] || [])];
+          
+          // Check if this voter already exists
+          const voterIndex = existingVotes.findIndex(v => v.displayName === data.voterName);
+          
+          if (voterIndex >= 0) {
+            // Update existing vote
+            existingVotes[voterIndex] = {
+              ...existingVotes[voterIndex],
+              submittedAt: new Date().toISOString()
+            };
+          } else {
+            // Add new vote
+            existingVotes.push({
+              id: `${data.storyId}_${data.voterName}`,
+              storyId: data.storyId,
+              userId: data.userId || 'unknown', // Fallback if userId not available
+              displayName: data.voterName,
+              voteValue: '?', // Placeholder until votes are revealed
+              submittedAt: new Date().toISOString()
+            });
+          }
+          
+          return {
+            ...prev,
+            [data.storyId]: existingVotes
+          };
+        }
+        
+        // New mode with userVotes data
+        console.log('Users who voted:', data.userVotes);
+        
+        // We don't have the actual vote values yet, but we know who has voted
+        return {
+          ...prev,
+          [data.storyId]: data.userVotes.map((voter: { userId: string; displayName: string }) => ({
+            id: `${data.storyId}_${voter.displayName}`,
+            storyId: data.storyId,
+            userId: voter.userId,
+            displayName: voter.displayName,
+            voteValue: '?', // Placeholder until votes are revealed
+            submittedAt: new Date().toISOString()
+          }))
+        };
+      });
     });
 
     socketRef.current.on('votes_revealed', (data) => {
@@ -340,6 +394,7 @@ export const useSocket = () => {
 
   const startVotingSession = (storyId: string, deckType = 'fibonacci', timerDuration = 60) => {
     if (socketRef.current && socketRef.current.connected) {
+      console.log(`Emitting start_voting_session for story ID: ${storyId}`);
       socketRef.current.emit('start_voting_session', { storyId, deckType, timerDuration });
     } else {
       setError('Not connected to server');

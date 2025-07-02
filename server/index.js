@@ -336,12 +336,22 @@ io.on('connection', (socket) => {
       submittedAt: new Date().toISOString()
     };
 
-    // Broadcast vote count update (without revealing actual votes)
+    // Broadcast vote count update with additional data for auto-reveal functionality
     const storyVotes = Object.values(votes).filter(v => v.storyId === data.storyId);
+    const onlineUsersForStory = Object.values(connectedUsers);
+    
     io.emit('vote_submitted', {
       storyId: data.storyId,
       voteCount: storyVotes.length,
-      voterName: user.displayName
+      voterName: user.displayName,
+      userId: socket.id, // Ensure userId is always included
+      // Add information about who has voted (userIds only, not the actual votes)
+      userVotes: storyVotes.map(v => ({ 
+        userId: v.userId || socket.id, // Ensure userId is always present
+        displayName: v.displayName 
+      })),
+      // Total number of connected users
+      totalUsers: onlineUsersForStory.length
     });
   });
 
@@ -390,7 +400,24 @@ io.on('connection', (socket) => {
       session.votesRevealed = data.revealed;
       session.timerStartedAt = null; // Stop timer when revealing votes
 
-      const storyVotes = Object.values(votes).filter(v => v.storyId === data.storyId);
+      const storyVotes = Object.values(votes)
+        .filter(v => v.storyId === data.storyId)
+        .map(vote => {
+          // Ensure each vote has a userId
+          if (!vote.userId) {
+            // Try to find the user by displayName
+            const userMatch = Object.entries(connectedUsers).find(
+              ([_, user]) => user.displayName === vote.displayName
+            );
+            
+            if (userMatch) {
+              vote.userId = userMatch[0]; // Use the socket ID as userId
+            } else {
+              vote.userId = 'unknown';
+            }
+          }
+          return vote;
+        });
       
       io.emit('votes_revealed', {
         storyId: data.storyId,
@@ -461,7 +488,7 @@ server.on('error', (error) => {
 });
 
 // Enhanced startup
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Socket.IO server running on port ${PORT}`);
   console.log(`📡 Backend URL: https://planning-poker-backend-dxkk.onrender.com`);
