@@ -1,5 +1,15 @@
 # Release Notes
 
+## v1.0.1 (July 5, 2025)
+
+This patch fixes a UI issue with vote selection.
+
+### Bug Fixes
+
+- Fixed an issue where voting card selection was not properly displayed (normal voter clicks on a card but the question mark card would appear selected instead)
+- Improved vote tracking logic to ensure the correct card is visually highlighted
+- Added additional logging to help diagnose voting issues
+
 ## v1.0.0 (July 5, 2025)
 
 This marks the first official release of the Planning Poker application.
