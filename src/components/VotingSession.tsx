@@ -43,6 +43,7 @@ interface VotingSessionProps {
   votes: Vote[];
   user: User | null;
   connectedUsers: User[];
+  connected: boolean; // Add connection status
   onClose: () => void;
   onSavePoints: (storyId: string, points: string) => void;
   actions: {
@@ -58,7 +59,7 @@ interface VotingSessionProps {
 
 const DECK_PRESETS = {
   fibonacci: ['0', '½', '1', '2', '3', '5', '8', '13', '21', '34', '55', '?', '☕'],
-  powersOfTwo: ['1', '2', '4', '8', '16', '32', '64', '?', '☕'],
+  powersOfTwo: ['1', '2', '4', '8', '16', '24', '32', '64', '?', '☕'],
   tshirt: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '?', '☕'],
 };
 
@@ -68,6 +69,7 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
   votes,
   user,
   connectedUsers,
+  connected,
   onClose,
   onSavePoints,
   actions,
@@ -83,18 +85,32 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
   const [saveLoading, setSaveLoading] = useState(false);
   const { showToast } = useToast();
 
-  // Find user's vote
+  // Find user's vote with improved matching
   useEffect(() => {
-    if (user && votes) {
-      const userVote = votes.find(vote => 
-        // Try to match by userId first, then by displayName
-        (vote.userId && user.id && vote.userId === user.id) || 
-        vote.displayName === user.displayName
+    if (user && votes && votes.length > 0) {
+      console.log(`Looking for ${user.displayName}'s vote among ${votes.length} votes`);
+      
+      // Try to match by userId first
+      let userVote = votes.find(vote => 
+        vote.userId && user.id && vote.userId === user.id
       );
       
-      // Only update if we have a different vote value or no selected vote yet
-      if (userVote && (userVote.voteValue !== '?' || !selectedVote)) {
-        console.log(`Found user's vote: ${userVote.voteValue}`);
+      // If not found by userId, try by displayName (case insensitive)
+      if (!userVote) {
+        userVote = votes.find(vote => 
+          vote.displayName.toLowerCase() === user.displayName.toLowerCase()
+        );
+      }
+      
+      // Log the result for debugging
+      if (userVote) {
+        console.log(`Found ${user.displayName}'s vote: ${userVote.voteValue}`);
+      } else {
+        console.log(`No vote found for ${user.displayName}`);
+      }
+      
+      // Only update if we have a valid vote value
+      if (userVote && userVote.voteValue) {
         setSelectedVote(userVote.voteValue);
       }
     }
@@ -217,6 +233,26 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
     try {
       // Immediately update the UI to show the selected vote
       setSelectedVote(value);
+      
+      // If the user already voted, update their existing vote in the local state
+      if (user) {
+        const updatedVotes = [...votes];
+        const existingVoteIndex = updatedVotes.findIndex(v => 
+          (v.userId && user.id && v.userId === user.id) || 
+          v.displayName.toLowerCase() === user.displayName.toLowerCase()
+        );
+        
+        if (existingVoteIndex >= 0) {
+          // Update existing vote
+          updatedVotes[existingVoteIndex] = {
+            ...updatedVotes[existingVoteIndex],
+            voteValue: value,
+            submittedAt: new Date().toISOString()
+          };
+        }
+      }
+      
+      // Send the vote to the server
       actions.submitVote(story.id, value);
       showToast('Your vote has been submitted', 'success');
     } catch (error) {
@@ -301,43 +337,53 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
     );
   }
 
-  const deck = session ? DECK_PRESETS[session.deckType as keyof typeof DECK_PRESETS] : DECK_PRESETS.fibonacci;
+  const deck = session ? DECK_PRESETS[session.deckType as keyof typeof DECK_PRESETS] : DECK_PRESETS.powersOfTwo;
   const stats = calculateStats();
   const isTimerActive = session?.timerStartedAt && timeRemaining !== null && timeRemaining > 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex items-center">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                console.log("Closing modal via back button");
-                onClose();
-              }}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg transition-colors mr-3"
-              title="Back to stories"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-1">{story.title}</h2>
-              <p className="text-gray-600 text-sm">{story.description}</p>
+        {/* Header */}          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+            <div className="flex items-center">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log("Closing modal via back button");
+                  onClose();
+                }}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg transition-colors mr-3"
+                title="Back to stories"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-1">{story.title}</h2>
+                <p className="text-gray-600 text-sm">{story.description}</p>
+              </div>
+            </div>
+            <div className="flex items-center">
+              {/* Connection status indicator */}
+              <div className={`mr-4 flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                connected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800 animate-pulse'
+              }`}>
+                <div className={`w-2 h-2 rounded-full mr-1 ${
+                  connected ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                {connected ? 'Connected' : 'Reconnecting...'}
+              </div>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log("Closing modal via X button");
+                  onClose();
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              console.log("Closing modal via X button");
-              onClose();
-            }}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
         {/* Timer and Controls */}
         <div className="p-6 border-b border-gray-200 bg-gray-50">
@@ -493,8 +539,8 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
                     onChange={(e) => actions.changeDeckType(story.id, e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="fibonacci">Fibonacci</option>
                     <option value="powersOfTwo">Powers of 2</option>
+                    <option value="fibonacci">Fibonacci</option>
                     <option value="tshirt">T-Shirt Sizes</option>
                   </select>
                 </div>

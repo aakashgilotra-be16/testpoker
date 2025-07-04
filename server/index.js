@@ -292,7 +292,7 @@ io.on('connection', (socket) => {
     const session = {
       id: `${data.storyId}_${Date.now()}`,
       storyId: data.storyId,
-      deckType: data.deckType || 'fibonacci',
+      deckType: data.deckType || 'powersOfTwo',
       isActive: true,
       votesRevealed: false,
       timerDuration: data.timerDuration || 60,

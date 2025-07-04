@@ -218,6 +218,18 @@ function App() {
                 <p className="text-sm text-gray-600">Team Estimation Made Easy</p>
               </div>
             </div>
+            
+            {/* Connection status indicator */}
+            <div className="mr-4">
+              <div className={`rounded-full px-2 py-1 text-xs font-medium flex items-center ${
+                connected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800 animate-pulse'
+              }`}>
+                <div className={`w-2 h-2 rounded-full mr-1 ${
+                  connected ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                <span>{connected ? 'Connected' : connectionStatus}</span>
+              </div>
+            </div>
 
             <div className="flex items-center space-x-4">
               {/* Connection Status */}
@@ -336,6 +348,7 @@ function App() {
           votes={votes[votingStory.id] || []}
           user={user}
           connectedUsers={connectedUsers}
+          connected={connected}
           onClose={() => {
             console.log(`App: Explicitly closing voting modal for story: "${votingStory?.title}"`);
             setVotingStory(null);

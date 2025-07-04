@@ -61,12 +61,12 @@ export const useSocket = () => {
     socketRef.current = io(BACKEND_URL, {
       // Start with polling for better compatibility, allow upgrade to websocket
       transports: ['polling', 'websocket'],
-      timeout: 30000, // Increased timeout
+      timeout: 60000, // Increased timeout to 60 seconds
       forceNew: true,
       reconnection: true,
-      reconnectionDelay: 2000, // Start with 2 second delay
+      reconnectionDelay: 1000, // Start with 1 second delay
       reconnectionDelayMax: 10000, // Max 10 seconds
-      maxReconnectionAttempts: 10, // More attempts
+      reconnectionAttempts: 20, // More attempts for better reliability
       // Enhanced options for Render compatibility
       upgrade: true,
       rememberUpgrade: false,
@@ -130,6 +130,12 @@ export const useSocket = () => {
       setError(null);
       setReconnectAttempts(0);
       setConnectionStatus('Reconnected');
+      
+      // Re-join the session to refresh user data
+      if (user) {
+        console.log('Re-joining session as', user.displayName);
+        socketRef.current?.emit('join', { displayName: user.displayName });
+      }
     });
 
     socketRef.current.on('reconnect_attempt', (attemptNumber) => {
@@ -399,7 +405,7 @@ export const useSocket = () => {
     }
   };
 
-  const startVotingSession = (storyId: string, deckType = 'fibonacci', timerDuration = 60) => {
+  const startVotingSession = (storyId: string, deckType = 'powersOfTwo', timerDuration = 60) => {
     if (socketRef.current && socketRef.current.connected) {
       console.log(`Emitting start_voting_session for story ID: ${storyId}`);
       socketRef.current.emit('start_voting_session', { storyId, deckType, timerDuration });
@@ -411,9 +417,49 @@ export const useSocket = () => {
   const submitVote = (storyId: string, value: string) => {
     if (socketRef.current && socketRef.current.connected) {
       console.log(`Submitting vote for story ${storyId}: ${value}`);
+      
+      // Store the vote locally in case of disconnection
+      if (user) {
+        // Optimistically update local state
+        setVotes(prev => {
+          const existingVotes = [...(prev[storyId] || [])];
+          const voterIndex = existingVotes.findIndex(v => 
+            (v.userId && user.id && v.userId === user.id) || 
+            v.displayName.toLowerCase() === user.displayName.toLowerCase()
+          );
+          
+          if (voterIndex >= 0) {
+            // Update existing vote
+            existingVotes[voterIndex] = {
+              ...existingVotes[voterIndex],
+              voteValue: value,
+              submittedAt: new Date().toISOString()
+            };
+          } else {
+            // Add new vote
+            existingVotes.push({
+              id: `${storyId}_${user.displayName}`,
+              storyId: storyId,
+              userId: user.id || 'unknown',
+              displayName: user.displayName,
+              voteValue: value,
+              submittedAt: new Date().toISOString()
+            });
+          }
+          
+          return {
+            ...prev,
+            [storyId]: existingVotes
+          };
+        });
+      }
+      
+      // Send to server
       socketRef.current.emit('submit_vote', { storyId, value });
     } else {
-      setError('Not connected to server');
+      setError('Not connected to server. Attempting to reconnect...');
+      // Try to reconnect
+      socketRef.current?.connect();
     }
   };
 
