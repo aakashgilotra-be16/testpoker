@@ -105,16 +105,17 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
       // Log the result for debugging
       if (userVote) {
         console.log(`Found ${user.displayName}'s vote: ${userVote.voteValue}`);
+        
+        // Only update if we have a valid vote value and it's different from the current selection
+        if (userVote.voteValue && userVote.voteValue !== selectedVote) {
+          console.log(`Updating selected vote from ${selectedVote} to ${userVote.voteValue}`);
+          setSelectedVote(userVote.voteValue);
+        }
       } else {
         console.log(`No vote found for ${user.displayName}`);
       }
-      
-      // Only update if we have a valid vote value
-      if (userVote && userVote.voteValue) {
-        setSelectedVote(userVote.voteValue);
-      }
     }
-  }, [votes, user]);
+  }, [votes, user, selectedVote]);
 
   // Timer effect
   useEffect(() => {
@@ -231,7 +232,8 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
     if (!session || session.votesRevealed) return;
     setSubmitLoading(true);
     try {
-      // Immediately update the UI to show the selected vote
+      // Ensure we're setting the exact selected value
+      console.log(`User selected vote: ${value}`);
       setSelectedVote(value);
       
       // If the user already voted, update their existing vote in the local state
@@ -252,12 +254,24 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
         }
       }
       
-      // Send the vote to the server
-      actions.submitVote(story.id, value);
-      showToast('Your vote has been submitted', 'success');
+      // Send the vote to the server - Use a small timeout to ensure state is updated first
+      setTimeout(() => {
+        actions.submitVote(story.id, value);
+        showToast('Your vote has been submitted', 'success');
+      }, 10);
     } catch (error) {
       console.error('Error submitting vote:', error);
       showToast('Failed to submit vote. Please try again.', 'error');
+      // Reset selected vote to previous value if there was an error
+      if (user) {
+        const userVote = votes.find(vote => 
+          (vote.userId && user.id && vote.userId === user.id) || 
+          vote.displayName.toLowerCase() === user.displayName.toLowerCase()
+        );
+        if (userVote) {
+          setSelectedVote(userVote.voteValue);
+        }
+      }
     } finally {
       setTimeout(() => setSubmitLoading(false), 500);
     }
@@ -618,28 +632,37 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
 
           {/* Voting Cards */}
           <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-13 gap-3 mb-6">
-            {deck.map((value) => (
-              <button
-                key={value}
-                onClick={() => handleSubmitVote(value)}
-                disabled={(session && session.votesRevealed) || submitLoading}
-                className={`aspect-[3/4] rounded-lg border-2 font-bold text-lg transition-all duration-200 ${
-                  selectedVote === value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg scale-105'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:scale-105'
-                } disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden`}
-              >
-                {submitLoading && selectedVote === value ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-100/80">
-                    <Spinner size="sm" className="text-blue-600" />
-                  </div>
-                ) : null}
-                {value}
-                {selectedVote === value && !submitLoading && (
-                  <span className="absolute bottom-1 right-1 text-xs text-green-600 animate-pulse">✓</span>
-                )}
-              </button>
-            ))}
+            {deck.map((value) => {
+              // Debug selected vote
+              if (selectedVote === value) {
+                console.log(`Card ${value} is selected`);
+              }
+              
+              return (
+                <button
+                  key={value}
+                  onClick={() => handleSubmitVote(value)}
+                  disabled={(session && session.votesRevealed) || submitLoading}
+                  data-selected={selectedVote === value ? "true" : "false"}
+                  data-value={value}
+                  className={`aspect-[3/4] rounded-lg border-2 font-bold text-lg transition-all duration-200 ${
+                    selectedVote === value
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg scale-105'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:scale-105'
+                  } disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden`}
+                >
+                  {submitLoading && selectedVote === value ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-blue-100/80">
+                      <Spinner size="sm" className="text-blue-600" />
+                    </div>
+                  ) : null}
+                  {value}
+                  {selectedVote === value && !submitLoading && (
+                    <span className="absolute bottom-1 right-1 text-xs text-green-600 animate-pulse">✓</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Vote Results */}

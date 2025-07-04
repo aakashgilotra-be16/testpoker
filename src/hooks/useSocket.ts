@@ -423,13 +423,20 @@ export const useSocket = () => {
         // Optimistically update local state
         setVotes(prev => {
           const existingVotes = [...(prev[storyId] || [])];
-          const voterIndex = existingVotes.findIndex(v => 
-            (v.userId && user.id && v.userId === user.id) || 
-            v.displayName.toLowerCase() === user.displayName.toLowerCase()
-          );
+          // First try to match by userId if possible
+          const voterIndex = existingVotes.findIndex(v => {
+            if (v.userId && user.id && v.userId === user.id) {
+              return true;
+            }
+            // Then try by displayName (case insensitive)
+            return v.displayName.toLowerCase() === user.displayName.toLowerCase();
+          });
+          
+          console.log(`Vote selected: ${value} for user ${user.displayName} (userId: ${user.id || 'unknown'})`);
           
           if (voterIndex >= 0) {
             // Update existing vote
+            console.log(`Updating existing vote at index ${voterIndex}`);
             existingVotes[voterIndex] = {
               ...existingVotes[voterIndex],
               voteValue: value,
@@ -437,6 +444,7 @@ export const useSocket = () => {
             };
           } else {
             // Add new vote
+            console.log(`Adding new vote for ${user.displayName}`);
             existingVotes.push({
               id: `${storyId}_${user.displayName}`,
               storyId: storyId,
