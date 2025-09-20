@@ -519,6 +519,23 @@ export const useSocket = () => {
     }
   };
 
+  const disconnect = () => {
+    if (socketRef.current) {
+      console.log('🔌 Manually disconnecting socket...');
+      socketRef.current.disconnect();
+      
+      // Reset local state when disconnecting
+      setUser(null);
+      setStories([]);
+      setVotingSessions({});
+      setVotes({});
+      setConnectedUsers([]);
+      setError(null);
+      setReconnectAttempts(0);
+      setConnectionStatus('Disconnected');
+    }
+  };
+
   return {
     connected,
     user,
@@ -543,6 +560,7 @@ export const useSocket = () => {
       resetVoting,
       changeDeckType,
       endVotingSession,
+      disconnect,
     },
   };
 };

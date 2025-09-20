@@ -151,7 +151,26 @@ function App() {
   };
 
   const handleSignOut = async () => {
-    window.location.reload(); // Simple way to reset the app state
+    // Properly reset all application state instead of using window.location.reload()
+    try {
+      // Disconnect from socket and reset state
+      actions.disconnect();
+      
+      // Reset all local state
+      setShowAuthModal(false);
+      setShowStoryModal(false);
+      setShowBulkStoryModal(false);
+      setShowExportModal(false);
+      setEditingStory(null);
+      setVotingStory(null);
+      setSelectedApp(null);
+      setShowAppSelector(true);
+      
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Only fallback to reload if there's an actual error
+      window.location.reload();
+    }
   };
 
   const handleCreateStoryClick = () => {
@@ -170,11 +189,22 @@ function App() {
   };
 
   const handleBackToSelector = () => {
+    // Properly reset state instead of using window.location.reload()
     setSelectedApp(null);
     setShowAppSelector(true);
-    // Reset user to show auth modal again when they select an app
+    
+    // Reset other modal states
+    setShowAuthModal(false);
+    setShowStoryModal(false);
+    setShowBulkStoryModal(false);
+    setShowExportModal(false);
+    setEditingStory(null);
+    setVotingStory(null);
+    
+    // If user exists, disconnect them from the current session
+    // They'll need to re-authenticate when selecting a new app
     if (user) {
-      window.location.reload();
+      actions.disconnect();
     }
   };
 
