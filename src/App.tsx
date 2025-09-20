@@ -10,6 +10,8 @@ import { VotingSession } from './components/VotingSession';
 import { ExportModal } from './components/ExportModal';
 import { StoryManager } from './components/StoryManager';
 import { ToastProvider } from './context/ToastContext';
+import RoomManager from './components/RoomManager';
+import RoomPage from './components/RoomPage';
 
 interface Story {
   id: string;
@@ -20,7 +22,8 @@ interface Story {
   updated_at: string;
 }
 
-function App() {
+// Home page component for non-room access
+function HomePage({ onBackToRooms }: { onBackToRooms?: () => void }) {
   const {
     connected,
     user,
@@ -189,7 +192,13 @@ function App() {
   };
 
   const handleBackToSelector = () => {
-    // Properly reset state instead of using window.location.reload()
+    // For solo mode, go back to rooms
+    if (onBackToRooms) {
+      onBackToRooms();
+      return;
+    }
+    
+    // For room mode, reset state
     setSelectedApp(null);
     setShowAppSelector(true);
     
@@ -437,6 +446,85 @@ function App() {
         />
       )}
     </div>
+    </ToastProvider>
+  );
+}
+
+// Main App component with simple URL-based routing
+function App() {
+  const [currentPage, setCurrentPage] = useState<'rooms' | 'room' | 'solo'>('rooms');
+  const [roomId, setRoomId] = useState<string | null>(null);
+
+  // Simple URL-based routing
+  useEffect(() => {
+    const path = window.location.pathname;
+    
+    if (path.startsWith('/room/')) {
+      const extractedRoomId = path.split('/')[2];
+      if (extractedRoomId) {
+        setRoomId(extractedRoomId);
+        setCurrentPage('room');
+      } else {
+        setCurrentPage('rooms');
+      }
+    } else if (path === '/solo') {
+      setCurrentPage('solo');
+    } else {
+      // Default to rooms page
+      setCurrentPage('rooms');
+      if (path !== '/rooms' && path !== '/') {
+        window.history.pushState({}, '', '/rooms');
+      }
+    }
+  }, []);
+
+  // Navigation helpers
+  const navigateToRooms = () => {
+    setCurrentPage('rooms');
+    setRoomId(null);
+    window.history.pushState({}, '', '/rooms');
+  };
+
+  const navigateToRoom = (id: string) => {
+    setCurrentPage('room');
+    setRoomId(id);
+    window.history.pushState({}, '', `/room/${id}`);
+  };
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      
+      if (path.startsWith('/room/')) {
+        const extractedRoomId = path.split('/')[2];
+        if (extractedRoomId) {
+          setRoomId(extractedRoomId);
+          setCurrentPage('room');
+        } else {
+          setCurrentPage('rooms');
+        }
+      } else if (path === '/solo') {
+        setCurrentPage('solo');
+      } else {
+        setCurrentPage('rooms');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  return (
+    <ToastProvider>
+      {currentPage === 'rooms' && <RoomManager onRoomJoin={navigateToRoom} />}
+      {currentPage === 'room' && roomId && (
+        <RoomPage 
+          roomId={roomId} 
+          onBackToRooms={navigateToRooms}
+        />
+      )}
+      {currentPage === 'solo' && <HomePage onBackToRooms={navigateToRooms} />}
     </ToastProvider>
   );
 }

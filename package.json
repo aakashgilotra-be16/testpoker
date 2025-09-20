@@ -1,16 +1,28 @@
 {
-  "name": "planning-poker-app",
+  "name": "@planning-poker/monorepo",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "client": "vite",
-    "server": "cd server && npm run dev",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "cd server && npm start"
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "vite",
+    "dev:gateway": "npm run dev --workspace=@planning-poker/gateway",
+    "dev:room-service": "npm run dev --workspace=@planning-poker/room-service", 
+    "dev:voting-service": "npm run dev --workspace=@planning-poker/voting-service",
+    "dev:microservices": "concurrently \"npm run dev:gateway\" \"npm run dev:room-service\" \"npm run dev:voting-service\" \"npm run dev:client\"",
+    "build": "npm run build --workspaces",
+    "build:shared": "npm run build --workspace=@planning-poker/shared",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "type-check": "npm run type-check --workspaces",
+    "clean": "npm run clean --workspaces",
+    "migration:setup": "echo 'Setting up microservices migration...'",
+    "legacy:server": "cd server && npm run legacy:dev",
+    "legacy:client": "vite"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
@@ -33,7 +45,12 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

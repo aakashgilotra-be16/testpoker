@@ -169,6 +169,12 @@ export const useSocket = () => {
       console.log('👤 User joined:', data.user.displayName);
     });
 
+    // Room-specific events
+    socketRef.current.on('room_joined', (data) => {
+      console.log('🏠 Joined room:', data.room.name);
+      // Room joined confirmation - the user_joined event will follow with room data
+    });
+
     socketRef.current.on('users_updated', (users) => {
       setConnectedUsers(users);
       console.log('👥 Users updated:', users.length, 'online');
@@ -365,6 +371,16 @@ export const useSocket = () => {
     }
   };
 
+  const joinRoom = (roomId: string, userId: string, name: string, displayName: string, role: string = 'participant') => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('join_room', { roomId, userId, name, displayName, role });
+      console.log('🏠 Joining room as:', displayName, 'in room:', roomId);
+    } else {
+      setError('Not connected to server. Please wait for connection...');
+      console.warn('❌ Cannot join room - not connected');
+    }
+  };
+
   const createStory = (title: string, description: string) => {
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit('create_story', { title, description });
@@ -547,6 +563,7 @@ export const useSocket = () => {
     connectionStatus,
     actions: {
       joinSession,
+      joinRoom,
       createStory,
       updateStory,
       deleteStory,
