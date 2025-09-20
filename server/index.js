@@ -480,6 +480,153 @@ io.on('connection', (socket) => {
       io.emit('voting_session_ended', { storyId: data.storyId });
     }
   });
+
+  // ===== RETROSPECTIVE EVENT HANDLERS =====
+  
+  // Join retrospective session
+  socket.on('join_retrospective', (data) => {
+    const user = {
+      id: socket.id,
+      displayName: data.displayName,
+      joinedAt: new Date().toISOString()
+    };
+    
+    // Add user to connected users
+    retrospectiveConnectedUsers[socket.id] = user;
+    
+    // Get all users before emitting
+    const allUsers = Object.values(retrospectiveConnectedUsers);
+    
+    socket.emit('retrospective_user_joined', {
+      user,
+      items: retrospectiveItems,
+      votes: retrospectiveVotes,
+      session: retrospectiveSession,
+      connectedUsers: allUsers
+    });
+    
+    // Broadcast updated user list to all users
+    io.emit('retrospective_users_updated', allUsers);
+    
+    console.log('👤 User joined retrospective:', data.displayName, 'Total users:', allUsers.length);
+  });
+
+  // Add retrospective item
+  socket.on('add_retrospective_item', (data) => {
+    const user = retrospectiveConnectedUsers[socket.id];
+    const item = {
+      id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      text: data.text,
+      category: data.category,
+      author: user?.displayName || 'Anonymous',
+      authorId: socket.id,
+      votes: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    retrospectiveItems.unshift(item);
+    retrospectiveVotes[item.id] = [];
+    
+    io.emit('retrospective_item_added', item);
+    console.log('📝 Retrospective item added:', item.text);
+  });
+
+  // Update retrospective item
+  socket.on('update_retrospective_item', (data) => {
+    const itemIndex = retrospectiveItems.findIndex(item => item.id === data.id);
+    if (itemIndex !== -1) {
+      retrospectiveItems[itemIndex] = {
+        ...retrospectiveItems[itemIndex],
+        text: data.text,
+        category: data.category,
+        updatedAt: new Date().toISOString()
+      };
+      
+      io.emit('retrospective_item_updated', retrospectiveItems[itemIndex]);
+      console.log('✏️ Retrospective item updated:', data.id);
+    }
+  });
+
+  // Delete retrospective item
+  socket.on('delete_retrospective_item', (data) => {
+    const itemIndex = retrospectiveItems.findIndex(item => item.id === data.id);
+    if (itemIndex !== -1) {
+      retrospectiveItems.splice(itemIndex, 1);
+      delete retrospectiveVotes[data.id];
+      
+      io.emit('retrospective_item_deleted', { id: data.id });
+      console.log('🗑️ Retrospective item deleted:', data.id);
+    }
+  });
+
+  // Vote on retrospective item
+  socket.on('vote_retrospective_item', (data) => {
+    const item = retrospectiveItems.find(item => item.id === data.itemId);
+    if (item) {
+      // Check if user already voted
+      const existingVote = retrospectiveVotes[data.itemId]?.find(vote => vote.userId === socket.id);
+      if (!existingVote) {
+        const user = retrospectiveConnectedUsers[socket.id];
+        const vote = {
+          id: `vote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          itemId: data.itemId,
+          userId: socket.id,
+          displayName: user?.displayName || 'Anonymous',
+          createdAt: new Date().toISOString()
+        };
+        
+        if (!retrospectiveVotes[data.itemId]) {
+          retrospectiveVotes[data.itemId] = [];
+        }
+        retrospectiveVotes[data.itemId].push(vote);
+        
+        // Update item vote count
+        item.votes = retrospectiveVotes[data.itemId].length;
+        
+        io.emit('retrospective_vote_added', vote);
+        console.log('🗳️ Retrospective vote added:', vote.displayName);
+      }
+    }
+  });
+
+  // Remove vote from retrospective item
+  socket.on('remove_retrospective_vote', (data) => {
+    const item = retrospectiveItems.find(item => item.id === data.itemId);
+    if (item && retrospectiveVotes[data.itemId]) {
+      const voteIndex = retrospectiveVotes[data.itemId].findIndex(vote => vote.userId === socket.id);
+      if (voteIndex !== -1) {
+        const vote = retrospectiveVotes[data.itemId][voteIndex];
+        retrospectiveVotes[data.itemId].splice(voteIndex, 1);
+        
+        // Update item vote count
+        item.votes = retrospectiveVotes[data.itemId].length;
+        
+        io.emit('retrospective_vote_removed', { itemId: data.itemId, voteId: vote.id });
+        console.log('🗳️ Retrospective vote removed:', vote.displayName);
+      }
+    }
+  });
+
+  // Change retrospective phase
+  socket.on('change_retrospective_phase', (data) => {
+    retrospectiveSession.phase = data.phase;
+    retrospectiveSession.updatedAt = new Date().toISOString();
+    
+    io.emit('retrospective_phase_changed', { phase: data.phase });
+    console.log('🔄 Retrospective phase changed to:', data.phase);
+  });
+
+  // Handle disconnection for retrospective users
+  socket.on('disconnect', () => {
+    // Remove from retrospective users if they were in retrospective
+    if (retrospectiveConnectedUsers[socket.id]) {
+      delete retrospectiveConnectedUsers[socket.id];
+      const allUsers = Object.values(retrospectiveConnectedUsers);
+      io.emit('retrospective_users_updated', allUsers);
+      console.log('👋 Retrospective user disconnected:', socket.id, 'Remaining users:', allUsers.length);
+    }
+  });
 });
 
 // Handle server errors
@@ -488,7 +635,7 @@ server.on('error', (error) => {
 });
 
 // Enhanced startup
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Socket.IO server running on port ${PORT}`);
   console.log(`📡 Backend URL: https://planning-poker-backend-dxkk.onrender.com`);
@@ -497,6 +644,18 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`🔧 Transport modes: polling, websocket`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
+// ===== RETROSPECTIVE SESSION MANAGEMENT =====
+let retrospectiveItems = [];
+let retrospectiveVotes = {};
+let retrospectiveConnectedUsers = {};
+let retrospectiveSession = {
+  id: 'retrospective-1',
+  phase: 'gather',
+  isActive: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+};
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

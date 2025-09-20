@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Download, LogOut, Users, Zap, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Download, LogOut, Users, Zap, Wifi, WifiOff, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useSocket } from './hooks/useSocket';
 import { AuthModal } from './components/AuthModal';
+import { AppSelector } from './components/AppSelector';
+import { RetrospectiveApp } from './components/RetrospectiveApp';
 import { StoryModal } from './components/StoryModal';
 import { BulkStoryModal } from './components/BulkStoryModal';
 import { VotingSession } from './components/VotingSession';
 import { ExportModal } from './components/ExportModal';
 import { StoryManager } from './components/StoryManager';
 import { ToastProvider } from './context/ToastContext';
-import { LoadingOverlay } from './components/ui/LoadingStates';
 
 interface Story {
   id: string;
@@ -38,12 +39,18 @@ function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [editingStory, setEditingStory] = useState<Story | null>(null);
   const [votingStory, setVotingStory] = useState<Story | null>(null);
+  const [selectedApp, setSelectedApp] = useState<'estimation' | 'retrospective' | null>(null);
+  const [showAppSelector, setShowAppSelector] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    // Show app selector first if no app is selected
+    if (!selectedApp) {
+      setShowAppSelector(true);
+    } else if (!user) {
+      // Show auth modal after app selection
       setShowAuthModal(true);
     }
-  }, [user]);
+  }, [user, selectedApp]);
 
   // Find active voting session to auto-show to all users
   useEffect(() => {
@@ -156,6 +163,21 @@ function App() {
     setShowBulkStoryModal(true);
   };
 
+  const handleAppSelect = (appType: 'estimation' | 'retrospective') => {
+    setSelectedApp(appType);
+    setShowAppSelector(false);
+    // Auth modal will be shown automatically by useEffect
+  };
+
+  const handleBackToSelector = () => {
+    setSelectedApp(null);
+    setShowAppSelector(true);
+    // Reset user to show auth modal again when they select an app
+    if (user) {
+      window.location.reload();
+    }
+  };
+
   if (!connected) {
     return (
       <ToastProvider>
@@ -202,6 +224,25 @@ function App() {
     );
   }
 
+  // Show app selector first (before authentication)
+  if (showAppSelector) {
+    return (
+      <ToastProvider>
+        <AppSelector onSelectApp={handleAppSelect} />
+      </ToastProvider>
+    );
+  }
+
+  // Show retrospective app if selected
+  if (selectedApp === 'retrospective' && user) {
+    return (
+      <ToastProvider>
+        <RetrospectiveApp user={user} onBackToSelector={handleBackToSelector} />
+      </ToastProvider>
+    );
+  }
+
+  // Show estimation app (original planning poker) if selected or as default
   return (
     <ToastProvider>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -210,6 +251,13 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
+              <button
+                onClick={handleBackToSelector}
+                className="mr-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Back to app selector"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
                 <Zap className="w-6 h-6 text-white" />
               </div>
@@ -320,6 +368,7 @@ function App() {
           actions.joinSession(displayName);
           setShowAuthModal(false);
         }}
+        selectedApp={selectedApp || undefined}
       />
 
       <StoryModal
