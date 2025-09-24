@@ -154,6 +154,7 @@ export default function RoomRetrospective({ room, userName, onBackToApps, onLeav
         <RetrospectiveApp 
           user={user} 
           onBackToSelector={onLeaveRoom}
+          hideHeader={true}
         />
       </div>
     </div>
