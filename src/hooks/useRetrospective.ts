@@ -1,32 +1,24 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { socketService } from '../services/socketService';
+import { storageService } from '../services/storageService';
+import { SOCKET_EVENTS, RETROSPECTIVE_CATEGORIES } from '../constants';
+import type { 
+  RetrospectiveItem, 
+  RetrospectiveSession, 
+  User,
+  LoadingState 
+} from '../types';
+import { utils } from '../utils';
 
-export interface RetrospectiveItem {
-  id: string;
-  text: string;
-  category: 'went-well' | 'to-improve' | 'action-items';
-  author: string;
-  authorId: string;
-  votes: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface RetrospectiveVote {
+// Temporary type for RetrospectiveVote until it's added to main types
+type RetrospectiveVote = {
   id: string;
   itemId: string;
   userId: string;
-  displayName: string;
-  createdAt: string;
-}
-
-export interface RetrospectiveSession {
-  id: string;
-  phase: 'gather' | 'discuss' | 'vote' | 'action';
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+  userName: string;
+  votedAt: string;
+};
 
 export const useRetrospective = () => {
   const socketRef = useRef<Socket | null>(null);
@@ -46,8 +38,6 @@ export const useRetrospective = () => {
     }
 
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-    
-    console.log('🔌 Connecting to retrospective backend:', BACKEND_URL);
     
     socketRef.current = io(BACKEND_URL, {
       transports: ['polling', 'websocket'],
@@ -69,21 +59,18 @@ export const useRetrospective = () => {
     socketRef.current.on('connect', () => {
       setConnected(true);
       setError(null);
-      console.log('✅ Connected to retrospective backend');
+  
     });
 
-    socketRef.current.on('disconnect', (reason) => {
+    socketRef.current.on('disconnect', () => {
       setConnected(false);
-      console.log('❌ Disconnected from retrospective:', reason);
     });
 
-    socketRef.current.on('connect_error', (err) => {
-      console.error('🚫 Retrospective connection error:', err.message);
+    socketRef.current.on('connect_error', () => {
       setError('Failed to connect to retrospective server');
       setConnected(false);
     });
 
-    // Retrospective events
     socketRef.current.on('retrospective_user_joined', (data) => {
       setUser(data.user);
       setItems(data.items || []);
@@ -92,17 +79,14 @@ export const useRetrospective = () => {
       if (data.connectedUsers) {
         setConnectedUsers(data.connectedUsers);
       }
-      console.log('👤 Retrospective user joined:', data.user.displayName);
     });
 
     socketRef.current.on('retrospective_users_updated', (users) => {
       setConnectedUsers(users);
-      console.log('👥 Retrospective users updated:', users.length, 'online');
     });
 
     socketRef.current.on('retrospective_item_added', (item) => {
       setItems(prev => [item, ...prev]);
-      console.log('📝 Retrospective item added:', item.text);
     });
 
     socketRef.current.on('retrospective_item_updated', (item) => {
@@ -126,7 +110,7 @@ export const useRetrospective = () => {
       // Update item vote count
       setItems(prev => prev.map(item => 
         item.id === vote.itemId 
-          ? { ...item, votes: item.votes + 1 }
+          ? { ...item, votes: (item.votes || 0) + 1 }
           : item
       ));
     });
@@ -139,7 +123,7 @@ export const useRetrospective = () => {
       // Update item vote count
       setItems(prev => prev.map(item => 
         item.id === data.itemId 
-          ? { ...item, votes: Math.max(0, item.votes - 1) }
+          ? { ...item, votes: Math.max(0, (item.votes || 0) - 1) }
           : item
       ));
     });
@@ -150,7 +134,6 @@ export const useRetrospective = () => {
 
     return () => {
       if (socketRef.current) {
-        console.log('🔌 Disconnecting retrospective socket...');
         socketRef.current.disconnect();
         socketRef.current = null;
         joinedRef.current = false;
@@ -160,14 +143,12 @@ export const useRetrospective = () => {
 
   const joinRetrospectiveSession = (displayName: string) => {
     if (joinedRef.current) {
-      console.log('👋 Already joined retrospective session');
       return;
     }
     
     if (socketRef.current && socketRef.current.connected) {
       joinedRef.current = true;
       socketRef.current.emit('join_retrospective', { displayName });
-      console.log('👋 Joining retrospective session as:', displayName);
     } else {
       setError('Not connected to retrospective server');
     }
@@ -234,6 +215,8 @@ export const useRetrospective = () => {
     setSession(null);
     setConnectedUsers([]);
   };
+
+
 
   return {
     connected,

@@ -990,9 +990,26 @@ io.on('connection', (socket) => {
     retrospectiveConnectedUsers[socket.id] = user;
     const allUsers = Object.values(retrospectiveConnectedUsers);
     
+    // Convert backend items to frontend format
+    const frontendItems = retrospectiveItems.map((backendItem) => ({
+      id: backendItem.id,
+      content: backendItem.content,
+      category: (backendItem.categoryId as any) || 'went-well', // Map categoryId to category
+      author: backendItem.authorName || 'Anonymous',
+      authorId: backendItem.authorId,
+      roomId: 'default-room',
+      votes: retrospectiveVotes[backendItem.id]?.length || 0,
+      votedBy: retrospectiveVotes[backendItem.id]?.map(v => (v as any).userId) || [],
+      isResolved: false,
+      tags: [],
+      priority: 0,
+      createdAt: new Date(backendItem.createdAt),
+      updatedAt: new Date(backendItem.createdAt)
+    }));
+
     socket.emit('retrospective_user_joined', {
       user,
-      items: retrospectiveItems,
+      items: frontendItems,
       votes: retrospectiveVotes,
       session: retrospectiveSession,
       connectedUsers: allUsers
@@ -1004,35 +1021,69 @@ io.on('connection', (socket) => {
 
   socket.on('add_retrospective_item', (data) => {
     const user = retrospectiveConnectedUsers[socket.id];
-    const item: RetrospectiveItem = {
+    
+    const frontendItem = {
       id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      text: data.text,
-      category: data.category as 'went-well' | 'could-improve' | 'action-items',
+      content: data.text,
+      category: data.category as 'went-well' | 'to-improve' | 'action-items',
       author: user?.displayName || 'Anonymous',
       authorId: socket.id,
+      roomId: 'default-room',
       votes: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      votedBy: [],
+      isResolved: false,
+      tags: [],
+      priority: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
-    retrospectiveItems.unshift(item);
-    retrospectiveVotes[item.id] = [];
+    const backendItem: RetrospectiveItem = {
+      id: frontendItem.id,
+      categoryId: frontendItem.category,
+      authorId: frontendItem.authorId,
+      authorName: frontendItem.author,
+      content: frontendItem.content,
+      votes: [],
+      isAnonymous: false,
+      createdAt: new Date().toISOString()
+    };
     
-    io.emit('retrospective_item_added', item);
-    console.log('📝 Retrospective item added:', item.text);
+    retrospectiveItems.unshift(backendItem);
+    retrospectiveVotes[frontendItem.id] = [];
+    
+    io.emit('retrospective_item_added', frontendItem as any);
+    console.log('📝 Retrospective item added:', frontendItem.content);
   });
 
   socket.on('update_retrospective_item', (data) => {
     const itemIndex = retrospectiveItems.findIndex(item => item.id === data.id);
     if (itemIndex !== -1) {
+      // Update backend item
       retrospectiveItems[itemIndex] = {
         ...retrospectiveItems[itemIndex],
-        text: data.text,
-        category: data.category as 'went-well' | 'could-improve' | 'action-items',
-        updatedAt: new Date().toISOString()
+        content: data.text, // Update content property
+        categoryId: data.category, // Update category
+        createdAt: new Date().toISOString() // Update timestamp
       };
       
-      io.emit('retrospective_item_updated', retrospectiveItems[itemIndex]);
+      const frontendItem = {
+        id: retrospectiveItems[itemIndex].id,
+        content: data.text,
+        category: data.category as 'went-well' | 'to-improve' | 'action-items',
+        author: retrospectiveItems[itemIndex].authorName || 'Anonymous',
+        authorId: retrospectiveItems[itemIndex].authorId,
+        roomId: 'default-room',
+        votes: retrospectiveVotes[retrospectiveItems[itemIndex].id]?.length || 0,
+        votedBy: retrospectiveVotes[retrospectiveItems[itemIndex].id]?.map(v => (v as any).userId) || [],
+        isResolved: false,
+        tags: [],
+        priority: 0,
+        createdAt: new Date(retrospectiveItems[itemIndex].createdAt),
+        updatedAt: new Date()
+      };
+      
+      io.emit('retrospective_item_updated', frontendItem as any);
       console.log('✏️ Retrospective item updated:', data.id);
     }
   });

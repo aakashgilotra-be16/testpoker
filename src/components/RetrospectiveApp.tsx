@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, MessageSquare, CheckCircle, AlertCircle, ArrowLeft, Zap, Wifi, WifiOff, Edit2, Trash2, Check, X } from 'lucide-react';
 import { useRetrospective } from '../hooks/useRetrospective';
+import '../styles/components/retrospective.css';
 
 interface RetrospectiveAppProps {
   user: any;
@@ -9,37 +10,17 @@ interface RetrospectiveAppProps {
 }
 
 export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBackToSelector, hideHeader = false }) => {
+  console.log('🔄 RetrospectiveApp rendering with:', { user, hideHeader });
   
-  // Custom scrollbar styles
-  const scrollbarStyles = `
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #d1d5db;
-      border-radius: 3px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #9ca3af;
-    }
-    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-      background: #9ca3af;
-    }
-    .custom-scrollbar {
-      scrollbar-width: thin;
-      scrollbar-color: #d1d5db transparent;
-    }
-  `;
-  const {
-    connected,
-    items,
-    session,
-    connectedUsers,
-    error,
-    actions
+  const { 
+    connected, 
+    user: retroUser, 
+    items, 
+    votes,
+    session, 
+    connectedUsers, 
+    actions,
+    error 
   } = useRetrospective();
 
   // Category-specific input states
@@ -79,7 +60,9 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
   };
 
   const handleVoteItem = (itemId: string) => {
-    if (actions.hasUserVoted(itemId)) {
+    const hasVoted = actions.hasUserVoted(itemId);
+    
+    if (hasVoted) {
       actions.removeVote(itemId);
     } else {
       actions.voteItem(itemId);
@@ -88,7 +71,7 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
 
   const startEditing = (item: any) => {
     setEditingItemId(item.id);
-    setEditingText(item.text);
+    setEditingText(item.content || (item as any).text || ''); // Handle both content and text properties
   };
 
   const cancelEditing = () => {
@@ -97,7 +80,7 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
   };
 
   const saveEdit = (item: any) => {
-    if (!editingText.trim()) return;
+    if (!editingText?.trim()) return;
     
     actions.updateItem(item.id, editingText.trim(), item.category);
     setEditingItemId(null);
@@ -111,10 +94,10 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
   };
 
   const canEditItem = (item: any) => {
-    return user && (item.authorId === user.id || item.author === user.displayName);
+    return retroUser && (item.authorId === retroUser.id || item.author === retroUser.displayName);
   };
 
-  const getItemsByCategory = (category: string) => {
+  const getItemsByCategory = (category: 'went-well' | 'to-improve' | 'action-items') => {
     return items.filter(item => item.category === category);
   };
 
@@ -156,54 +139,51 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
   }
 
   return (
-    <div className={hideHeader ? "" : "min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50"}>
-      {/* Custom scrollbar styles */}
-      <style dangerouslySetInnerHTML={{ __html: scrollbarStyles }} />
-      
+    <div className="retro-app">
       {/* Header - only show when not hidden */}
       {!hideHeader && (
-        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center">
+        <header className="retro-header">
+          <div className="retro-header__container">
+            <div className="retro-header__content">
+              <div className="retro-header__left">
                 <button
                   onClick={onBackToSelector}
-                  className="mr-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="btn btn--ghost btn--icon"
                   title="Back to app selector"
                 >
-                  <ArrowLeft className="w-5 h-5" />
+                  <ArrowLeft className="icon icon--sm" />
                 </button>
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
-                  <Users className="w-6 h-6 text-white" />
+                <div className="retro-header__logo">
+                  <Users className="icon icon--md" />
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Retrospective Sessions</h1>
-                  <p className="text-sm text-gray-600">Team Reflection & Improvement</p>
+                <div className="retro-header__title">
+                  <h1 className="heading heading--lg">Retrospective Sessions</h1>
+                  <p className="text text--secondary text--sm">Team Reflection & Improvement</p>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-4">
+              <div className="retro-header__right">
                 {/* Connection Status */}
-                <div className="flex items-center text-sm text-gray-600">
+                <div className="retro-status">
                   {connected ? (
                     <>
-                      <Wifi className="w-4 h-4 text-green-500 mr-1" />
-                      <span className="font-medium text-green-600">Connected</span>
+                      <Wifi className="icon icon--xs text--success" />
+                      <span className="text text--success text--sm">Connected</span>
                     </>
                   ) : (
                     <>
-                      <WifiOff className="w-4 h-4 text-red-500 mr-1" />
-                      <span className="font-medium text-red-600">Disconnected</span>
+                      <WifiOff className="icon icon--xs text--error" />
+                      <span className="text text--error text--sm">Disconnected</span>
                     </>
                   )}
-                  <span className="ml-2 font-medium">
+                  <span className="retro-status__count">
                     {connectedUsers.length} online
                   </span>
                 </div>
 
-                <div className="flex items-center text-sm text-gray-600">
-                  <Users className="w-4 h-4 text-purple-500 mr-1" />
-                  <span className="font-medium">{user?.displayName || 'Anonymous'}</span>
+                <div className="retro-user">
+                  <Users className="icon icon--xs text--primary" />
+                  <span className="text text--sm">{user?.displayName || 'Anonymous'}</span>
                 </div>
               </div>
             </div>
@@ -212,9 +192,9 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
       )}
 
       {/* Phase Selector */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-1 py-4">
+      <div className="retro-phases">
+        <div className="retro-phases__container">
+          <div className="retro-phases__list">
             {[
               { id: 'gather', label: 'Gather', description: 'Collect feedback' },
               { id: 'discuss', label: 'Discuss', description: 'Review items' },
@@ -224,14 +204,12 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
               <button
                 key={phase.id}
                 onClick={() => actions.changePhase(phase.id as any)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activePhase === phase.id
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                className={`retro-phase-btn ${
+                  activePhase === phase.id ? 'retro-phase-btn--active' : ''
                 }`}
               >
-                {phase.label}
-                <div className="text-xs text-gray-400 mt-1">{phase.description}</div>
+                <span className="retro-phase-btn__label">{phase.label}</span>
+                <span className="retro-phase-btn__description">{phase.description}</span>
               </button>
             ))}
           </div>
@@ -239,40 +217,31 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="retro-main">
+
 
 
         {/* Retrospective Items */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {['went-well', 'to-improve', 'action-items'].map((category) => {
+        <div className="retro-categories">
+          {(['went-well', 'to-improve', 'action-items'] as const).map((category) => {
             const categoryInfo = getCategoryInfo(category);
             const categoryItems = getItemsByCategory(category);
             const IconComponent = categoryInfo.icon;
             
             return (
-              <div key={category} className={`${categoryInfo.bgColor} ${categoryInfo.borderColor} border rounded-xl p-6`}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <IconComponent className={`w-5 h-5 text-${categoryInfo.color}-600 mr-2`} />
-                    <h3 className={`text-lg font-semibold text-${categoryInfo.color}-800`}>
+              <div key={category} className={`retro-category retro-category--${category}`}>
+                <div className="retro-category__header">
+                  <div className="retro-category__title-group">
+                    <IconComponent className="retro-category__icon" />
+                    <h3 className="retro-category__title">
                       {categoryInfo.title}
                     </h3>
-                    <span className={`ml-3 text-sm ${
-                      categoryItems.length > 5 ? 'text-orange-600 font-medium' : 'text-gray-500'
-                    }`}>
-                      {categoryItems.length} items
-                      {categoryItems.length > 5 && ' • Scrollable'}
-                    </span>
                   </div>
                   
                   {showingInputFor !== category && (
                     <button
                       onClick={() => showInputForCategory(category)}
-                      className={`px-3 py-2 rounded-lg text-sm flex items-center transition-colors text-white ${
-                        category === 'went-well' ? 'bg-green-500 hover:bg-green-600' :
-                        category === 'to-improve' ? 'bg-yellow-500 hover:bg-yellow-600' :
-                        'bg-red-500 hover:bg-red-600'
-                      }`}
+                      className={`btn btn--sm retro-add-btn retro-add-btn--${category}`}
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add
@@ -282,12 +251,12 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
 
                 {/* Add input field for this category */}
                 {showingInputFor === category && (
-                  <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                  <div className="retro-input-form">
                     <textarea
                       value={categoryInputs[category as keyof typeof categoryInputs]}
                       onChange={(e) => setCategoryInputs(prev => ({ ...prev, [category]: e.target.value }))}
                       placeholder={`Add to ${categoryInfo.title.toLowerCase()}...`}
-                      className="w-full text-sm border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                      className="retro-input"
                       rows={2}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -299,22 +268,20 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                       }}
                       autoFocus
                     />
-                    <div className="flex justify-end space-x-2 mt-2">
+                    <div className="retro-input-actions">
                       <button
                         onClick={hideInput}
-                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                        className="btn btn--ghost btn--sm"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => addItemToCategory(category as 'went-well' | 'to-improve' | 'action-items')}
                         disabled={!categoryInputs[category as keyof typeof categoryInputs].trim()}
-                        className={`px-4 py-1 text-sm rounded-md transition-colors ${
-                          categoryInputs[category as keyof typeof categoryInputs].trim()
-                            ? (category === 'went-well' ? 'bg-green-500 hover:bg-green-600 text-white' :
-                               category === 'to-improve' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' :
-                               'bg-red-500 hover:bg-red-600 text-white')
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        className={`btn btn--primary btn--sm retro-add-btn retro-add-btn--${category} ${
+                          !categoryInputs[category as keyof typeof categoryInputs].trim()
+                            ? 'btn--disabled'
+                            : ''
                         }`}
                       >
                         Add Item
@@ -324,19 +291,19 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                 )}
                 
                 {/* Items container with scrollbar for >5 items */}
-                <div className={categoryItems.length > 5 ? 'relative' : ''}>
+                <div className="retro-items-container">
                   <div 
-                    className={`space-y-3 ${
+                    className={`retro-items ${
                       categoryItems.length > 5 
-                        ? 'max-h-80 overflow-y-auto pr-1 custom-scrollbar' 
+                        ? 'retro-items--scrollable' 
                         : ''
                     }`}
                   >
                     {categoryItems.length === 0 ? (
-                      <p className="text-gray-500 text-sm italic">No items yet</p>
+                      <p className="retro-empty-state">No items yet</p>
                     ) : (
                       categoryItems.map((item) => (
-                      <div key={item.id} className="bg-white rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition-colors">
+                      <div key={item.id} className="retro-item">
                         {editingItemId === item.id ? (
                           // Editing mode
                           <div className="space-y-3">
@@ -351,21 +318,21 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                                   cancelEditing();
                                 }
                               }}
-                              className="w-full text-sm text-gray-800 border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                              className="retro-input retro-input--editing"
                               rows={2}
                               placeholder="Edit your item..."
                               autoFocus
                             />
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-500">by {item.author}</span>
-                              <div className="flex items-center space-x-2">
+                            <div className="retro-item-edit-footer">
+                              <span className="retro-item-author">by {item.author}</span>
+                              <div className="retro-item-actions">
                                 <button
                                   onClick={() => saveEdit(item)}
-                                  disabled={!editingText.trim() || editingText.trim() === item.text}
-                                  className={`p-1 rounded transition-colors ${
-                                    !editingText.trim() || editingText.trim() === item.text
-                                      ? 'text-gray-400 cursor-not-allowed'
-                                      : 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                                  disabled={!editingText?.trim() || editingText.trim() === (item.content || (item as any).text || '')}
+                                  className={`retro-action-btn retro-action-btn--save ${
+                                    !editingText?.trim() || editingText.trim() === (item.content || (item as any).text || '')
+                                      ? 'retro-action-btn--disabled'
+                                      : ''
                                   }`}
                                   title="Save changes"
                                 >
@@ -373,7 +340,7 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                                 </button>
                                 <button
                                   onClick={cancelEditing}
-                                  className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                                  className="retro-action-btn retro-action-btn--cancel"
                                   title="Cancel editing"
                                 >
                                   <X className="w-3 h-3" />
@@ -384,16 +351,16 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                         ) : (
                           // Display mode
                           <>
-                            <p className="text-sm text-gray-800 mb-2">{item.text}</p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-500">by {item.author}</span>
-                              <div className="flex items-center space-x-2">
+                            <p className="retro-item-content">{item.content}</p>
+                            <div className="retro-item-footer">
+                              <span className="retro-item-author">by {item.author}</span>
+                              <div className="retro-item-actions">
                                 <button
                                   onClick={() => handleVoteItem(item.id)}
-                                  className={`flex items-center text-xs transition-colors ${
+                                  className={`retro-vote-btn ${
                                     actions.hasUserVoted(item.id)
-                                      ? 'text-purple-600 font-medium'
-                                      : 'text-gray-500 hover:text-purple-600'
+                                      ? 'retro-vote-btn--active'
+                                      : ''
                                   }`}
                                 >
                                   <Zap className="w-3 h-3 mr-1" />
@@ -404,14 +371,14 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                                   <>
                                     <button
                                       onClick={() => startEditing(item)}
-                                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                      className="retro-action-btn retro-action-btn--edit"
                                       title="Edit item"
                                     >
                                       <Edit2 className="w-3 h-3" />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteItem(item.id)}
-                                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                      className="retro-action-btn retro-action-btn--delete"
                                       title="Delete item"
                                     >
                                       <Trash2 className="w-3 h-3" />
@@ -428,7 +395,7 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                   </div>
                   {/* Scroll indicator for long lists */}
                   {categoryItems.length > 5 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                    <div className="retro-scroll-indicator" />
                   )}
                 </div>
               </div>
@@ -438,20 +405,20 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
 
         {/* Summary */}
         {items.length > 0 && (
-          <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Session Summary</h3>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-green-600">{getItemsByCategory('went-well').length}</div>
-                <div className="text-sm text-gray-600">Went Well</div>
+          <div className="retro-summary">
+            <h3 className="retro-summary__title">Session Summary</h3>
+            <div className="retro-summary__stats">
+              <div className="retro-stat retro-stat--went-well">
+                <div className="retro-stat__number">{getItemsByCategory('went-well').length}</div>
+                <div className="retro-stat__label">Went Well</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-red-600">{getItemsByCategory('to-improve').length}</div>
-                <div className="text-sm text-gray-600">To Improve</div>
+              <div className="retro-stat retro-stat--to-improve">
+                <div className="retro-stat__number">{getItemsByCategory('to-improve').length}</div>
+                <div className="retro-stat__label">To Improve</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-blue-600">{getItemsByCategory('action-items').length}</div>
-                <div className="text-sm text-gray-600">Action Items</div>
+              <div className="retro-stat retro-stat--action-items">
+                <div className="retro-stat__number">{getItemsByCategory('action-items').length}</div>
+                <div className="retro-stat__label">Action Items</div>
               </div>
             </div>
           </div>

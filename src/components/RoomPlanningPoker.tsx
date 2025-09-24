@@ -7,18 +7,12 @@ import { BulkStoryModal } from './BulkStoryModal';
 import { VotingSession } from './VotingSession';
 import { ExportModal } from './ExportModal';
 import { StoryManager } from './StoryManager';
-
-interface Story {
-  id: string;
-  title: string;
-  description: string;
-  final_points: string | null;
-  created_at: string;
-  updated_at: string;
-}
+import type { Story, Room, User } from '../types';
+import type { LegacyStory, CompatibleStory } from '../types/legacy';
+import '../styles/components/planning-poker.css';
 
 interface RoomPlanningPokerProps {
-  room: any;
+  room: Room;
   userName: string;
   onBackToApps: () => void;
   onLeaveRoom: () => void;

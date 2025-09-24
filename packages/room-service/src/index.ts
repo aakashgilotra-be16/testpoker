@@ -3,12 +3,24 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import { connectDatabase } from './config/database.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { validateRequest } from './middleware/validation.js';
 import roomRoutes from './routes/rooms.js';
-import { AppError, ErrorCodes } from '@planning-poker/shared';
+// import { AppError, ErrorCodes } from '@planning-poker/shared';
+
+// Temporary error classes for compilation
+class AppError extends Error {
+  constructor(message: string, public statusCode: number = 500) {
+    super(message);
+  }
+}
+
+const ErrorCodes = {
+  ROOM_NOT_FOUND: 'ROOM_NOT_FOUND',
+  INVALID_REQUEST: 'INVALID_REQUEST',
+} as const;
 
 // Load environment variables
 dotenv.config();
@@ -55,7 +67,7 @@ app.use('/api/rooms', roomRoutes);
 
 // 404 handler
 app.use('*', (req, res, next) => {
-  next(new AppError(`Route ${req.originalUrl} not found`, ErrorCodes.ROOM_NOT_FOUND, 404));
+  next(new AppError(`Route ${req.originalUrl} not found`, 404));
 });
 
 // Global error handler
