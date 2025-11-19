@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Download, LogOut, Users, Zap, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
+import type { Story } from '../hooks/useSocket';
 import { AuthModal } from './AuthModal';
 import { StoryModal } from './StoryModal';
 import { BulkStoryModal } from './BulkStoryModal';
 import { VotingSession } from './VotingSession';
 import { ExportModal } from './ExportModal';
 import { StoryManager } from './StoryManager';
-import type { Story, Room, User } from '../types';
-import type { LegacyStory, CompatibleStory } from '../types/legacy';
+import type { Room } from '../types';
 import '../styles/components/planning-poker.css';
 
 interface RoomPlanningPokerProps {
@@ -296,7 +296,7 @@ export default function RoomPlanningPoker({ room, userName, onBackToApps, onLeav
         isOpen={showStoryModal}
         onClose={handleStoryModalClose}
         onSave={editingStory ? handleUpdateStory : handleCreateStory}
-        story={editingStory}
+        story={editingStory || undefined}
       />
 
       <BulkStoryModal

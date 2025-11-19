@@ -100,15 +100,17 @@ const roomSchema = new Schema<IRoom>({
     type: String, 
     required: true 
   },
-  participants: {
-    type: [participantSchema],
-    validate: {
-      validator: function(participants: any[]) {
-        return participants.length <= 30;
-      },
-      message: 'Room cannot have more than 30 participants'
+  participants: [
+    {
+      type: participantSchema,
+      validate: {
+        validator: function(participants: any[]) {
+          return participants.length <= 30;
+        },
+        message: 'Room cannot have more than 30 participants'
+      }
     }
-  },
+  ],
   settings: {
     type: roomSettingsSchema,
     default: () => ({})
@@ -193,7 +195,7 @@ roomSchema.methods.updateActivity = function() {
 };
 
 // Pre-save middleware
-roomSchema.pre('save', function(next) {
+roomSchema.pre('save', function(this: IRoom, next) {
   this.lastActivity = new Date();
   next();
 });

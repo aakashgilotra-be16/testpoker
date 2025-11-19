@@ -11,6 +11,8 @@ export interface IRetrospective extends Document {
     userId: string;
     name: string;
     displayName: string;
+    role?: 'frontend' | 'backend' | 'fullstack' | 'devops' | 'qa' | 'designer' | 'pm' | 'other';
+    experience?: 'junior' | 'mid' | 'senior' | 'lead';
     joinedAt: Date;
     isOnline: boolean;
   }>;
@@ -62,8 +64,23 @@ export interface IRetrospective extends Document {
     priority: 'low' | 'medium' | 'high';
     status: 'open' | 'in-progress' | 'completed';
     dueDate?: Date;
+    aiGenerated?: boolean;
+    aiConfidence?: number; // 0-1 score
+    originalPrompt?: string;
     createdAt: Date;
   }>;
+  aiGeneration?: {
+    isEnabled: boolean;
+    lastGeneratedAt?: Date;
+    generationCount: number;
+    feedback: Array<{
+      userId: string;
+      rating: 1 | 2 | 3 | 4 | 5;
+      comment?: string;
+      actionItemId: string;
+      createdAt: Date;
+    }>;
+  };
   stats: {
     totalItems: number;
     totalVotes: number;
@@ -116,6 +133,14 @@ const RetrospectiveSchema = new Schema<IRetrospective>({
     userId: { type: String, required: true },
     name: { type: String, required: true },
     displayName: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ['frontend', 'backend', 'fullstack', 'devops', 'qa', 'designer', 'pm', 'other']
+    },
+    experience: {
+      type: String,
+      enum: ['junior', 'mid', 'senior', 'lead']
+    },
     joinedAt: { type: Date, default: Date.now },
     isOnline: { type: Boolean, default: true }
   }],
@@ -179,8 +204,23 @@ const RetrospectiveSchema = new Schema<IRetrospective>({
       default: 'open'
     },
     dueDate: Date,
+    aiGenerated: { type: Boolean, default: false },
+    aiConfidence: { type: Number, min: 0, max: 1 },
+    originalPrompt: String,
     createdAt: { type: Date, default: Date.now }
   }],
+  aiGeneration: {
+    isEnabled: { type: Boolean, default: true },
+    lastGeneratedAt: Date,
+    generationCount: { type: Number, default: 0 },
+    feedback: [{
+      userId: { type: String, required: true },
+      rating: { type: Number, min: 1, max: 5, required: true },
+      comment: String,
+      actionItemId: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now }
+    }]
+  },
   stats: {
     totalItems: { type: Number, default: 0 },
     totalVotes: { type: Number, default: 0 },
@@ -221,7 +261,7 @@ RetrospectiveSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Instance Methods
 RetrospectiveSchema.methods.addParticipant = function(userData: any) {
-  const existingParticipant = this.participants.find(p => p.userId === userData.userId);
+  const existingParticipant = this.participants.find((p: any) => p.userId === userData.userId);
   if (!existingParticipant) {
     this.participants.push({
       userId: userData.userId,
@@ -238,7 +278,7 @@ RetrospectiveSchema.methods.addParticipant = function(userData: any) {
 };
 
 RetrospectiveSchema.methods.removeParticipant = function(userId: string) {
-  const participant = this.participants.find(p => p.userId === userId);
+  const participant = this.participants.find((p: any) => p.userId === userId);
   if (participant) {
     participant.isOnline = false;
   }
@@ -296,7 +336,7 @@ RetrospectiveSchema.methods.groupItems = function(itemIds: string[], groupData: 
   
   // Update items to reference the group
   itemIds.forEach(itemId => {
-    const item = this.items.find(i => i.id === itemId);
+    const item = this.items.find((i: any) => i.id === itemId);
     if (item) {
       item.groupId = group.id;
     }
@@ -335,12 +375,12 @@ RetrospectiveSchema.methods.generateSummary = function() {
     totalItems: this.stats.totalItems,
     totalVotes: this.stats.totalVotes,
     actionItemsCount: this.stats.totalActionItems,
-    categories: this.categories.map(cat => ({
+    categories: this.categories.map((cat: any) => ({
       name: cat.name,
-      itemCount: this.items.filter(item => item.categoryId === cat.id).length
+      itemCount: this.items.filter((item: any) => item.categoryId === cat.id).length
     })),
     topActionItems: this.actionItems
-      .filter(action => action.priority === 'high')
+      .filter((action: any) => action.priority === 'high')
       .slice(0, 5),
     completedAt: this.completedAt,
     status: this.status
