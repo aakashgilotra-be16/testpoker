@@ -40,7 +40,10 @@ export interface IRoom extends Document {
   addParticipant(userData: any): this;
   removeParticipant(userId: string): this;
   isHost(userId: string): boolean;
+  isAdmin(userId: string): boolean;
   canUserManage(userId: string): boolean;
+  promoteToAdmin(userId: string): this;
+  demoteFromAdmin(userId: string): this;
   updateActivity(): this;
 }
 
@@ -140,6 +143,10 @@ const roomSchema = new Schema<IRoom>({
 
 // Instance methods
 roomSchema.methods.addParticipant = function(userData: any) {
+  // Automatically assign 'host' role if userId matches hostId
+  const isHost = userData.userId === this.hostId;
+  const role = isHost ? 'host' : (userData.role || 'participant');
+  
   // Check if user already exists
   const existingIndex = this.participants.findIndex((p: any) => p.userId === userData.userId);
   
@@ -148,6 +155,7 @@ roomSchema.methods.addParticipant = function(userData: any) {
     this.participants[existingIndex] = {
       ...this.participants[existingIndex],
       ...userData,
+      role,
       lastActivity: new Date(),
       isOnline: true
     };
@@ -157,7 +165,7 @@ roomSchema.methods.addParticipant = function(userData: any) {
       userId: userData.userId,
       name: userData.name,
       displayName: userData.displayName,
-      role: userData.role || 'participant',
+      role,
       joinedAt: new Date(),
       lastActivity: new Date(),
       isOnline: true
@@ -181,9 +189,39 @@ roomSchema.methods.isHost = function(userId: string) {
   return this.hostId === userId;
 };
 
-roomSchema.methods.canUserManage = function(userId: string) {
-  return this.isHost(userId);
+roomSchema.methods.isAdmin = function(userId: string) {
+  // Host is always admin
+  if (this.hostId === userId) return true;
+  
+  // Check if user is a facilitator (admin role)
+  const participant = this.participants.find((p: any) => p.userId === userId);
+  return participant?.role === 'facilitator' || participant?.role === 'host';
 };
+
+roomSchema.methods.canUserManage = function(userId: string) {
+  return this.isAdmin(userId);
+};
+
+roomSchema.methods.promoteToAdmin = function(userId: string) {
+  const participant = this.participants.find((p: any) => p.userId === userId);
+  if (participant && participant.role === 'participant') {
+    participant.role = 'facilitator';
+    this.lastActivity = new Date();
+  }
+  return this;
+};
+
+roomSchema.methods.demoteFromAdmin = function(userId: string) {
+  // Can't demote the original host
+  if (this.hostId === userId) return this;
+  
+  const participant = this.participants.find((p: any) => p.userId === userId);
+  if (participant && participant.role === 'facilitator') {
+    participant.role = 'participant';
+    this.lastActivity = new Date();
+  }
+  return this;
+}
 
 roomSchema.methods.updateActivity = function() {
   this.lastActivity = new Date();

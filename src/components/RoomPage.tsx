@@ -245,7 +245,7 @@ export default function RoomPage({ roomId, onBackToRooms }: RoomPageProps) {
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <span>Room: <span className="font-mono font-semibold">{room.id}</span></span>
                   <span>•</span>
-                  <span>{room.participants.length} participants</span>
+                  <span>{room.participants?.length || 0} participants</span>
                 </div>
               </div>
               

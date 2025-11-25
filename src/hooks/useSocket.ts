@@ -180,6 +180,22 @@ export const useSocket = () => {
       console.log('👥 Users updated:', users.length, 'online');
     });
 
+    // Admin management events
+    socketRef.current.on('user_promoted_to_admin', (data) => {
+      console.log('⬆️ User promoted to admin:', data.userId);
+      // The room data will be updated via room_updated event
+    });
+
+    socketRef.current.on('user_demoted_from_admin', (data) => {
+      console.log('⬇️ User demoted from admin:', data.userId);
+      // The room data will be updated via room_updated event
+    });
+
+    socketRef.current.on('room_admins_updated', (data) => {
+      console.log('👥 Room admins updated:', data.admins);
+      // Could update local state if needed
+    });
+
     // Story events
     socketRef.current.on('story_created', (story) => {
       setStories(prev => [story, ...prev]);
@@ -294,14 +310,57 @@ export const useSocket = () => {
     });
 
     socketRef.current.on('votes_revealed', (data) => {
+      console.log('👁️ Votes revealed event received:', {
+        storyId: data.storyId,
+        sessionId: data.sessionId,
+        revealed: data.revealed,
+        votesCount: data.votes?.length,
+        votes: data.votes
+      });
+      
       setVotingSessions(prev => ({
         ...prev,
-        [data.storyId]: { ...prev[data.storyId], votesRevealed: data.revealed }
+        [data.storyId]: { 
+          ...prev[data.storyId], 
+          votesRevealed: data.revealed,
+          id: data.sessionId || prev[data.storyId]?.id
+        }
       }));
       if (data.revealed) {
-        setVotes(prev => ({ ...prev, [data.storyId]: data.votes }));
+        console.log(`📥 Setting votes for story ${data.storyId}:`, data.votes);
+        // Map the vote structure from server to client format
+        const formattedVotes = data.votes.map((vote: any) => ({
+          id: `${data.storyId}_${vote.userId}`,
+          storyId: data.storyId,
+          userId: vote.userId,
+          displayName: vote.displayName,
+          voteValue: vote.voteValue,
+          submittedAt: new Date().toISOString()
+        }));
+        setVotes(prev => ({ ...prev, [data.storyId]: formattedVotes }));
       }
-      console.log('👁️ Votes revealed for story:', data.storyId);
+    });
+
+    socketRef.current.on('final_estimate_saved', (data) => {
+      console.log('✅ Final estimate saved:', data);
+      setStories(prev => 
+        prev.map(story => 
+          story.id === data.storyId 
+            ? { ...story, final_points: data.finalEstimate }
+            : story
+        )
+      );
+      // Close the voting session
+      setVotingSessions(prev => {
+        const updated = { ...prev };
+        delete updated[data.storyId];
+        return updated;
+      });
+      setVotes(prev => {
+        const updated = { ...prev };
+        delete updated[data.storyId];
+        return updated;
+      });
     });
 
     socketRef.current.on('timer_started', (data) => {
@@ -441,11 +500,11 @@ export const useSocket = () => {
           const existingVotes = [...(prev[storyId] || [])];
           // First try to match by userId if possible
           const voterIndex = existingVotes.findIndex(v => {
-            if (v.userId && user.id && v.userId === user.id) {
+            if (v?.userId && user?.id && v.userId === user.id) {
               return true;
             }
             // Then try by displayName (case insensitive)
-            return v.displayName.toLowerCase() === user.displayName.toLowerCase();
+            return v?.displayName && user?.displayName && v.displayName.toLowerCase() === user.displayName.toLowerCase();
           });
           
           console.log(`Vote selected: ${value} for user ${user.displayName} (userId: ${user.id || 'unknown'})`);
@@ -527,9 +586,35 @@ export const useSocket = () => {
     }
   };
 
+  const saveFinalEstimate = (storyId: string, sessionId: string, finalEstimate: string) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('save_final_estimate', { storyId, sessionId, finalEstimate });
+    } else {
+      setError('Not connected to server');
+    }
+  };
+
   const endVotingSession = (storyId: string) => {
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit('end_voting_session', { storyId });
+    } else {
+      setError('Not connected to server');
+    }
+  };
+
+  const promoteToAdmin = (roomId: string, userId: string) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('promote_to_admin', { roomId, userId });
+      console.log('⬆️ Promoting user to admin:', userId);
+    } else {
+      setError('Not connected to server');
+    }
+  };
+
+  const demoteFromAdmin = (roomId: string, userId: string) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('demote_from_admin', { roomId, userId });
+      console.log('⬇️ Demoting user from admin:', userId);
     } else {
       setError('Not connected to server');
     }
@@ -577,6 +662,9 @@ export const useSocket = () => {
       resetVoting,
       changeDeckType,
       endVotingSession,
+      saveFinalEstimate,
+      promoteToAdmin,
+      demoteFromAdmin,
       disconnect,
     },
   };

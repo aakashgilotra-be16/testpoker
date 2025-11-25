@@ -188,4 +188,67 @@ export class RoomService {
 
     return result.modifiedCount;
   }
+
+  /**
+   * Promote a participant to admin (facilitator role)
+   */
+  static async promoteToAdmin(roomId: string, requesterId: string, targetUserId: string): Promise<IRoom | null> {
+    const room = await Room.findById(roomId.toUpperCase());
+    if (!room) return null;
+
+    // Only host or existing admin can promote
+    if (!room.isAdmin(requesterId)) {
+      throw new Error('Only admins can promote users');
+    }
+
+    // Can't promote if user is not in the room
+    const participant = room.participants.find((p: any) => p.userId === targetUserId);
+    if (!participant) {
+      throw new Error('User is not a participant in this room');
+    }
+
+    if (participant.role === 'facilitator' || participant.role === 'host') {
+      throw new Error('User is already an admin');
+    }
+
+    room.promoteToAdmin(targetUserId);
+    return await room.save();
+  }
+
+  /**
+   * Demote an admin to participant (remove facilitator role)
+   */
+  static async demoteFromAdmin(roomId: string, requesterId: string, targetUserId: string): Promise<IRoom | null> {
+    const room = await Room.findById(roomId.toUpperCase());
+    if (!room) return null;
+
+    // Only host can demote
+    if (!room.isHost(requesterId)) {
+      throw new Error('Only the room host can demote admins');
+    }
+
+    // Can't demote the host
+    if (room.hostId === targetUserId) {
+      throw new Error('Cannot demote the room host');
+    }
+
+    room.demoteFromAdmin(targetUserId);
+    return await room.save();
+  }
+
+  /**
+   * Get list of admins in a room
+   */
+  static async getRoomAdmins(roomId: string): Promise<Array<{ userId: string; displayName: string; role: string }>> {
+    const room = await Room.findById(roomId.toUpperCase());
+    if (!room) return [];
+
+    return room.participants
+      .filter((p: any) => p.role === 'host' || p.role === 'facilitator')
+      .map((p: any) => ({
+        userId: p.userId,
+        displayName: p.displayName,
+        role: p.role
+      }));
+  }
 }

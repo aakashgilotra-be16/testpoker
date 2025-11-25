@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, LogOut, Users, Zap, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
+import { Download, LogOut, Zap, WifiOff, ArrowLeft } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import type { Story } from '../hooks/useSocket';
 import { AuthModal } from './AuthModal';
@@ -8,6 +8,7 @@ import { BulkStoryModal } from './BulkStoryModal';
 import { VotingSession } from './VotingSession';
 import { ExportModal } from './ExportModal';
 import { StoryManager } from './StoryManager';
+import ParticipantsList from './ParticipantsList';
 import type { Room } from '../types';
 import '../styles/components/planning-poker.css';
 
@@ -37,6 +38,20 @@ export default function RoomPlanningPoker({ room, userName, onBackToApps, onLeav
   const [showExportModal, setShowExportModal] = useState(false);
   const [editingStory, setEditingStory] = useState<Story | null>(null);
   const [votingStory, setVotingStory] = useState<Story | null>(null);
+
+  // Merge room participants with real-time connected users to get accurate online status
+  const participantsWithOnlineStatus = room.participants.map(participant => {
+    // Check if this participant is currently connected by matching userId or displayName
+    const isCurrentlyOnline = connectedUsers.some(connectedUser => 
+      connectedUser.id === participant.userId || 
+      connectedUser.displayName.toLowerCase() === participant.displayName.toLowerCase()
+    );
+    
+    return {
+      ...participant,
+      isOnline: isCurrentlyOnline
+    };
+  });
 
   useEffect(() => {
     // Auto-authenticate with the room user data using room-based join
@@ -191,23 +206,16 @@ export default function RoomPlanningPoker({ room, userName, onBackToApps, onLeav
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Connection Status */}
-              <div className="flex items-center text-sm text-gray-600">
-                {connected ? (
-                  <>
-                    <Wifi className="w-4 h-4 text-green-500 mr-1" />
-                    <span className="font-medium text-green-600">Connected</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-4 h-4 text-red-500 mr-1" />
-                    <span className="font-medium text-red-600">Disconnected</span>
-                  </>
-                )}
-                <span className="ml-2 font-medium">
-                  {connectedUsers.length} online
-                </span>
-              </div>
+              {/* Participants List */}
+              {room.participants && (
+                <ParticipantsList
+                  participants={participantsWithOnlineStatus}
+                  currentUserId={localStorage.getItem('planningPoker_userId') || ''}
+                  isCurrentUserAdmin={user?.isStoryCreator || false}
+                  onPromoteToAdmin={(userId) => actions.promoteToAdmin(room.id, userId)}
+                  onDemoteFromAdmin={(userId) => actions.demoteFromAdmin(room.id, userId)}
+                />
+              )}
 
               {user && (
                 <>
@@ -220,16 +228,15 @@ export default function RoomPlanningPoker({ room, userName, onBackToApps, onLeav
                   </button>
                   
                   <div className="flex items-center text-sm text-gray-600">
-                    <Users className="w-4 h-4 mr-1" />
                     <span className="font-medium">{user.displayName}</span>
                     {user.isStoryCreator && (
                       <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                        Story Creator
+                        Admin
                       </span>
                     )}
                     {!user.isStoryCreator && (
                       <span className="ml-2 bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
-                        Team Member
+                        Member
                       </span>
                     )}
                   </div>

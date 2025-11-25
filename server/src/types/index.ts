@@ -300,13 +300,14 @@ export interface ServerToClientEvents {
   
   // Voting events
   voting_session_started: (session: VotingSession) => void;
-  vote_submitted: (data: { storyId: string; voteCount: number; voterName: string; userId: string; userVotes: Array<{ userId: string; displayName: string }>; totalUsers: number }) => void;
-  votes_revealed: (data: { storyId: string; revealed: boolean; votes: Vote[] }) => void;
+  vote_submitted: (data: { storyId: string; voteCount: number; voterName: string; userId: string; userVotes?: Array<{ userId: string; displayName: string }>; totalVoters: number; displayName: string }) => void;
+  votes_revealed: (data: { storyId: string; sessionId: string; revealed: boolean; votes: Array<{ userId: string; displayName: string; voteValue: string; confidence: number }> }) => void;
   voting_reset: (data: { storyId: string }) => void;
   voting_session_ended: (data: { storyId: string }) => void;
   timer_started: (data: { storyId: string; startedAt: string; duration: number }) => void;
   timer_stopped: (data: { storyId: string }) => void;
   deck_type_changed: (data: { storyId: string; deckType: string }) => void;
+  final_estimate_saved: (data: { storyId: string; sessionId: string; finalEstimate: string; voteCount: number }) => void;
   
   // Room events (New)
   room_created: (data: { room: Room; isHost: boolean }) => void;
@@ -314,6 +315,10 @@ export interface ServerToClientEvents {
   room_left: (data: { roomId: string; userId: string }) => void;
   room_updated: (room: Room) => void;
   room_participants_updated: (data: { roomId: string; participants: RoomParticipant[] }) => void;
+  user_promoted_to_admin: (data: { userId: string; displayName: string; role: string }) => void;
+  user_demoted_from_admin: (data: { userId: string; displayName: string; role: string }) => void;
+  room_admins_updated: (data: { admins: Array<{ userId: string; displayName: string; role: string }> }) => void;
+  room_admins_list: (data: { roomId: string; admins: Array<{ userId: string; displayName: string; role: string }> }) => void;
   
   // Error events
   error: (data: { message: string; code?: string }) => void;
@@ -349,12 +354,16 @@ export interface ClientToServerEvents {
   start_timer: (data: TimerData) => void;
   stop_timer: (data: { storyId: string }) => void;
   change_deck_type: (data: ChangeDeckTypeData) => void;
+  save_final_estimate: (data: { storyId: string; sessionId: string; finalEstimate: string }) => void;
   
   // Room events (New)
   create_room: (data: CreateRoomData) => void;
   join_room: (data: JoinRoomData) => void;
   leave_room: (data: LeaveRoomData) => void;
   update_room_settings: (data: UpdateRoomSettingsData) => void;
+  promote_to_admin: (data: { roomId: string; targetUserId: string }) => void;
+  demote_from_admin: (data: { roomId: string; targetUserId: string }) => void;
+  get_room_admins: (data: { roomId: string }) => void;
   
   // Retrospective events
   join_retrospective: (data: { displayName: string }) => void;

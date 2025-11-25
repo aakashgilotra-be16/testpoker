@@ -2,6 +2,7 @@ import VotingSession, { IVotingSession } from '../models/VotingSession';
 import Vote, { IVote } from '../models/Vote';
 import Story from '../models/Story';
 import Room from '../models/Room';
+import { temporaryVotes } from '../utils/dataStore';
 
 export interface CreateVotingSessionData {
   storyId: string;
@@ -60,18 +61,22 @@ export class VotingService {
         throw new Error('Story does not belong to this room');
       }
 
-      if (story.status === 'voting') {
-        throw new Error('Story is already being voted on');
-      }
-
-      // Check for existing active session for this story
+      // Check for existing active session for this story (removed status check to allow re-voting)
       const existingSession = await VotingSession.findOne({
         storyId: sessionData.storyId,
         isActive: true
       });
 
       if (existingSession) {
-        throw new Error('Active voting session already exists for this story');
+        // End the existing session automatically to allow re-voting
+        console.log(`⚠️ Found existing active session ${existingSession._id} for story ${sessionData.storyId}, ending it...`);
+        await VotingSession.findByIdAndUpdate(existingSession._id, {
+          isActive: false,
+          status: 'replaced',
+          completedAt: new Date(),
+          completedBy: createdBy
+        });
+        console.log(`✅ Ended previous session, creating new one...`);
       }
 
       // Create the voting session
@@ -104,20 +109,27 @@ export class VotingService {
   }
 
   /**
-   * Cast a vote in a session
+   * Cast a vote for a story (stores in memory only, not DB)
    */
   static async castVote(
     sessionId: string,
     userId: string,
     userName: string,
     voteData: VoteData
-  ): Promise<IVote> {
+  ): Promise<{ voteCount: number; totalParticipants: number; allVotesIn: boolean }> {
     try {
-      // Get the voting session
       const session = await this.getActiveSession(sessionId);
       if (!session) {
         throw new Error('Voting session not found or not active');
       }
+
+      console.log(`🗳️ Casting vote for session ${sessionId}:`, {
+        userId,
+        userName,
+        value: voteData.value,
+        sessionActive: session.isActive,
+        currentRound: session.currentRound
+      });
 
       // Check if session is open for voting
       if (!session.isActive) {
@@ -129,107 +141,74 @@ export class VotingService {
         throw new Error('Voting time has expired');
       }
 
-      // Check if user already voted in this round
-      const existingVote = await Vote.findOne({
-        sessionId: session._id,
-        userId,
-        roundNumber: session.currentRound
-      });
-
-      if (existingVote) {
-        throw new Error('User has already voted in this round');
+      // Store vote in memory only (not DB)
+      if (!temporaryVotes[sessionId]) {
+        temporaryVotes[sessionId] = {};
       }
 
-      // Create the vote
-      const vote = await Vote.create({
-        sessionId: session._id.toString(),
-        storyId: session.storyId,
-        roomId: session.roomId,
-        userId,
-        displayName: userName,
-        voteValue: voteData.value,
+      temporaryVotes[sessionId][userId] = {
+        value: voteData.value,
         confidence: voteData.confidence || 3,
-        reasoning: voteData.reasoning,
-        roundNumber: session.currentRound,
+        displayName: userName,
         submittedAt: new Date(),
-        isRevealedVote: false
-      });
+        reasoning: voteData.reasoning
+      };
+
+      console.log(`💾 Vote stored in memory for user ${userId}: ${voteData.value}`);
 
       // Update session participant tracking
       await session.addParticipant(userId, userName);
 
-      // Clear session cache
-      this.clearSessionCache(sessionId);
+      // Get vote counts
+      const voteCount = Object.keys(temporaryVotes[sessionId]).length;
+      const room = await Room.findById(session.roomId);
+      const totalParticipants = room?.participants?.filter(p => p.isOnline).length || 1;
+      const allVotesIn = voteCount >= totalParticipants && totalParticipants > 0;
+      
+      console.log(`📊 Room ${session.roomId} has ${totalParticipants} online participants (${room?.participants?.length} total)`);
 
-      // Check if all participants have voted
-      await this.checkForAutoReveal(session._id.toString());
+      console.log(`📊 Vote progress: ${voteCount}/${totalParticipants} votes`);
 
-      return vote;
+      return { voteCount, totalParticipants, allVotesIn };
     } catch (error) {
       throw new Error(`Failed to cast vote: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Reveal votes for a session
+   * Reveal votes for a session (marks session as revealed, doesn't fetch from DB)
    */
   static async revealVotes(
     sessionId: string,
     revealedBy: string
-  ): Promise<{ votes: IVote[]; session: IVotingSession; consensus: any }> {
+  ): Promise<{ session: IVotingSession }> {
     try {
       const session = await this.getActiveSession(sessionId);
       if (!session) {
         throw new Error('Voting session not found');
       }
 
-      // Get all votes for current round
-      const votes = await Vote.find({
-        sessionId: session._id.toString(),
-        roundNumber: session.currentRound
-      });
+      // Get temporary votes from memory
+      const tempVotes = temporaryVotes[sessionId] || {};
+      const voteCount = Object.keys(tempVotes).length;
 
-      if (votes.length === 0) {
-        throw new Error('No votes to reveal');
+      if (voteCount === 0) {
+        console.log('⚠️ No votes in memory to reveal, but marking session as revealed anyway');
       }
 
-      // Mark votes as revealed (no need to update votes, just update session)
-      // Note: We don't actually mark individual votes as revealed in this implementation
-
-      // Calculate consensus
-      const consensus = await this.calculateConsensus(votes);
-
-      // Update session with consensus data and mark as revealed
+      // Update session to mark votes as revealed
       await VotingSession.findByIdAndUpdate(session._id, {
         votesRevealed: true,
-        'consensus.achieved': consensus.achieved,
-        'consensus.percentage': consensus.percentage,
-        'consensus.finalEstimate': consensus.finalEstimate,
-        'consensus.confidence': consensus.confidence,
-        $push: {
-          rounds: {
-            roundNumber: session.currentRound,
-            startedAt: session.startedAt || new Date(),
-            completedAt: new Date(),
-            voteCount: votes.length,
-            averageVote: consensus.average,
-            consensus: consensus.achieved
-          }
-        },
-        consensusData: consensus,
         lastActivity: new Date()
       });
 
       // Clear cache
       this.clearSessionCache(sessionId);
 
+      console.log(`✅ Session ${sessionId} marked as votes revealed`);
+
       return {
-        votes: await Vote.find({
-          sessionId: session._id,
-          roundNumber: session.currentRound
-        }),
-        session: await VotingSession.findById(session._id) as IVotingSession,
-        consensus
+        session: await VotingSession.findById(session._id) as IVotingSession
       };
     } catch (error) {
       throw new Error(`Failed to reveal votes: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -299,6 +278,7 @@ export class VotingService {
       const updatedSession = await VotingSession.findByIdAndUpdate(
         sessionId,
         {
+          isActive: false,
           status: 'completed',
           finalEstimate: finalEstimate || session.consensusData?.estimate,
           finalConfidence: confidence || session.consensusData?.confidence,
@@ -310,10 +290,10 @@ export class VotingService {
         { new: true }
       );
 
-      // Update story with final estimate
+      // Update story - reset status to allow re-voting
       if (finalEstimate) {
         await Story.findByIdAndUpdate(session.storyId, {
-          status: 'estimated',
+          status: 'completed',
           final_points: finalEstimate, // Legacy compatibility
           estimate: {
             value: finalEstimate,
@@ -325,7 +305,7 @@ export class VotingService {
         });
       } else {
         await Story.findByIdAndUpdate(session.storyId, {
-          status: 'voted'
+          status: 'pending'
         });
       }
 

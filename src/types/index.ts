@@ -21,6 +21,16 @@ export interface User {
   preferences?: UserPreferences;
 }
 
+export interface Participant {
+  userId: string;
+  name: string;
+  displayName: string;
+  role: 'host' | 'facilitator' | 'participant';
+  joinedAt: string;
+  lastActivity: string;
+  isOnline: boolean;
+}
+
 export interface UserPreferences {
   theme: 'light' | 'dark' | 'auto';
   votingScale: string[];
@@ -40,11 +50,13 @@ export interface NotificationSettings {
 export interface Room extends BaseEntity {
   code: string;
   name?: string;
-  type: 'planning-poker' | 'retrospective';
+  description?: string;
+  type?: 'planning-poker' | 'retrospective';
   hostId: string;
-  participants: User[];
+  participants: Participant[];
   settings: RoomSettings;
-  isActive: boolean;
+  isActive?: boolean;
+  status?: 'active' | 'paused' | 'archived';
   lastActivity: Date;
 }
 
@@ -420,4 +432,4 @@ export interface PaginationConfig {
 }
 
 // Re-export commonly used types
-export type { User as Participant }; // Alias for backwards compatibility
+// Participant type is now defined above
