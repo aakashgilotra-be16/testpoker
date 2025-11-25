@@ -236,12 +236,13 @@ export class VotingService {
         sessionId,
         {
           currentRound: newRound,
-          consensusData: null,
-          timerStart: session.hasTimer ? new Date() : undefined,
-          timerExpiry: session.hasTimer && session.timerMinutes 
-            ? new Date(Date.now() + session.timerMinutes * 60 * 1000)
+          'consensus.achieved': false,
+          'consensus.finalEstimate': undefined,
+          timerStartedAt: session.timerDuration ? new Date() : undefined,
+          timerEndsAt: session.timerDuration 
+            ? new Date(Date.now() + session.timerDuration * 1000)
             : undefined,
-          lastActivity: new Date()
+          updatedAt: new Date()
         },
         { new: true }
       );
@@ -279,13 +280,12 @@ export class VotingService {
         sessionId,
         {
           isActive: false,
-          status: 'completed',
-          finalEstimate: finalEstimate || session.consensusData?.estimate,
-          finalConfidence: confidence || session.consensusData?.confidence,
+          phase: 'completed',
+          'consensus.finalEstimate': finalEstimate || session.consensus?.finalEstimate,
+          'consensus.confidence': confidence || session.consensus?.confidence || 0,
           completedAt: new Date(),
-          completedBy: endedBy,
-          sessionStats,
-          lastActivity: new Date()
+          'metrics.totalDuration': Date.now() - session.createdAt.getTime(),
+          updatedAt: new Date()
         },
         { new: true }
       );
@@ -501,7 +501,7 @@ export class VotingService {
   private static async checkForAutoReveal(sessionId: string): Promise<void> {
     try {
       const session = await VotingSession.findById(sessionId);
-      if (!session || !session.participants) return;
+      if (!session || !session.activeParticipants) return;
 
       const voteCount = await Vote.countDocuments({
         sessionId,
@@ -509,7 +509,7 @@ export class VotingService {
       });
 
       // Auto-reveal if all participants have voted
-      if (voteCount >= session.participants.length && voteCount > 0) {
+      if (voteCount >= session.activeParticipants.length && voteCount > 0) {
         // Small delay to ensure real-time updates
         setTimeout(() => {
           this.revealVotes(sessionId, 'system').catch(console.error);
