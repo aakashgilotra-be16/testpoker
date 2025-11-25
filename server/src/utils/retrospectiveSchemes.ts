@@ -1,9 +1,25 @@
-import type { RetrospectiveScheme, RetrospectiveSchemeConfig } from '../types';
-
 /**
  * Retrospective Scheme Configurations
- * Defines the various retrospective formats available to teams
+ * Frontend utility for retrospective formats
  */
+
+export type RetrospectiveScheme = 'standard' | 'start-stop-continue' | 'mad-sad-glad' | '4ls';
+
+export interface SchemeCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string;
+  description?: string;
+}
+
+export interface RetrospectiveSchemeConfig {
+  id: RetrospectiveScheme;
+  name: string;
+  description: string;
+  categories: SchemeCategory[];
+}
+
 export const RETROSPECTIVE_SCHEMES: Record<RetrospectiveScheme, RetrospectiveSchemeConfig> = {
   standard: {
     id: 'standard',
@@ -150,31 +166,14 @@ export const RETROSPECTIVE_SCHEMES: Record<RetrospectiveScheme, RetrospectiveSch
   }
 };
 
-/**
- * Get scheme configuration by ID
- */
 export function getSchemeConfig(scheme: RetrospectiveScheme): RetrospectiveSchemeConfig {
   return RETROSPECTIVE_SCHEMES[scheme] || RETROSPECTIVE_SCHEMES.standard;
 }
 
-/**
- * Get all available schemes
- */
 export function getAllSchemes(): RetrospectiveSchemeConfig[] {
   return Object.values(RETROSPECTIVE_SCHEMES);
 }
 
-/**
- * Validate if a category ID belongs to a specific scheme
- */
-export function isValidCategoryForScheme(categoryId: string, scheme: RetrospectiveScheme): boolean {
-  const config = getSchemeConfig(scheme);
-  return config.categories.some(cat => cat.id === categoryId);
-}
-
-/**
- * Get default scheme
- */
 export function getDefaultScheme(): RetrospectiveScheme {
   return 'standard';
 }
