@@ -1,0 +1,386 @@
+/* Planning Poker App Styles */
+
+.planning-poker-app {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #dbeafe 0%, #ffffff 50%, #faf5ff 100%);
+}
+
+.planning-poker-header {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-neutral-200);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.planning-poker-connection-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  margin-right: 1rem;
+}
+
+.planning-poker-connection-status--connected {
+  background-color: var(--color-success-100);
+  color: var(--color-success-800);
+}
+
+.planning-poker-connection-status--disconnected {
+  background-color: var(--color-error-100);
+  color: var(--color-error-800);
+  animation: pulse 2s infinite;
+}
+
+.planning-poker-connection-indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.25rem;
+}
+
+.planning-poker-connection-indicator--connected {
+  background-color: var(--color-success-500);
+}
+
+.planning-poker-connection-indicator--disconnected {
+  background-color: var(--color-error-500);
+}
+
+.planning-poker-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.planning-poker-action-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.planning-poker-action-button:hover {
+  background: var(--color-primary-600);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.planning-poker-action-button--secondary {
+  background: white;
+  color: var(--color-neutral-700);
+  border: 1px solid var(--color-neutral-300);
+}
+
+.planning-poker-action-button--secondary:hover {
+  background: var(--color-neutral-50);
+}
+
+.planning-poker-action-button--success {
+  background: var(--color-success-500);
+}
+
+.planning-poker-action-button--success:hover {
+  background: var(--color-success-600);
+}
+
+.planning-poker-stories-section {
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-neutral-200);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.planning-poker-stories-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--color-neutral-200);
+  background: var(--color-neutral-50);
+}
+
+.planning-poker-stories-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.planning-poker-stories-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.75rem;
+  color: var(--color-primary-600);
+}
+
+.planning-poker-stories-list {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.planning-poker-story-card {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-neutral-100);
+  transition: all var(--transition-fast);
+  background: white;
+}
+
+.planning-poker-story-card:hover {
+  background: var(--color-neutral-50);
+}
+
+.planning-poker-story-card:last-child {
+  border-bottom: none;
+}
+
+.planning-poker-story-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.planning-poker-story-card__title {
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin: 0 0 0.25rem 0;
+  flex: 1;
+}
+
+.planning-poker-story-card__description {
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+}
+
+.planning-poker-story-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.planning-poker-story-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: var(--font-size-xs);
+  color: var(--color-neutral-500);
+}
+
+.planning-poker-story-card__points {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: var(--font-size-xs);
+}
+
+.planning-poker-story-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.planning-poker-story-action {
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--color-neutral-500);
+}
+
+.planning-poker-story-action:hover {
+  color: var(--color-neutral-700);
+  background: var(--color-neutral-100);
+}
+
+.planning-poker-story-action--primary {
+  color: var(--color-primary-600);
+}
+
+.planning-poker-story-action--primary:hover {
+  background: var(--color-primary-50);
+}
+
+.planning-poker-story-action--success {
+  color: var(--color-success-600);
+}
+
+.planning-poker-story-action--success:hover {
+  background: var(--color-success-50);
+}
+
+.planning-poker-story-action--warning {
+  color: var(--color-warning-600);
+}
+
+.planning-poker-story-action--warning:hover {
+  background: var(--color-warning-50);
+}
+
+.planning-poker-story-action--danger {
+  color: var(--color-error-600);
+}
+
+.planning-poker-story-action--danger:hover {
+  background: var(--color-error-50);
+}
+
+.planning-poker-empty-state {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.planning-poker-empty-state__icon {
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1rem;
+  background: var(--color-neutral-100);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-400);
+}
+
+.planning-poker-empty-state__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin: 0 0 0.5rem 0;
+}
+
+.planning-poker-empty-state__description {
+  color: var(--color-neutral-500);
+  margin: 0 0 1.5rem 0;
+}
+
+.planning-poker-voting-section {
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-neutral-200);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.planning-poker-voting-header {
+  padding: 1.5rem;
+  background: var(--color-primary-50);
+  border-bottom: 1px solid var(--color-primary-100);
+}
+
+.planning-poker-voting-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-primary-900);
+  margin: 0 0 0.5rem 0;
+}
+
+.planning-poker-voting-story {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-700);
+  margin: 0;
+}
+
+.planning-poker-voting-cards {
+  padding: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4rem, 1fr));
+  gap: 0.75rem;
+  max-width: 40rem;
+}
+
+.planning-poker-voting-card {
+  aspect-ratio: 3/4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 2px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  color: var(--color-neutral-700);
+}
+
+.planning-poker-voting-card:hover {
+  border-color: var(--color-primary-300);
+  background: var(--color-primary-50);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.planning-poker-voting-card--selected {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-500);
+  color: white;
+}
+
+.planning-poker-voting-card--selected:hover {
+  border-color: var(--color-primary-600);
+  background: var(--color-primary-600);
+}
+
+.planning-poker-voting-results {
+  padding: 1.5rem;
+  border-top: 1px solid var(--color-neutral-100);
+  background: var(--color-neutral-50);
+}
+
+.planning-poker-voting-results__title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin: 0 0 1rem 0;
+}
+
+.planning-poker-voting-results__votes {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.planning-poker-voting-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: white;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-neutral-200);
+}
+
+.planning-poker-voting-result__user {
+  font-weight: 500;
+  color: var(--color-neutral-900);
+}
+
+.planning-poker-voting-result__vote {
+  padding: 0.25rem 0.5rem;
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}

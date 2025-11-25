@@ -54,6 +54,7 @@ interface VotingSessionProps {
     resetVoting: (storyId: string) => void;
     changeDeckType: (storyId: string, deckType: string) => void;
     endVotingSession: (storyId: string) => void;
+    saveFinalEstimate: (storyId: string, sessionId: string, finalEstimate: string) => void;
   };
 }
 
@@ -98,23 +99,24 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
       // If not found by userId, try by displayName (case insensitive)
       if (!userVote) {
         userVote = votes.find(vote => 
-          vote.displayName.toLowerCase() === user.displayName.toLowerCase()
+          vote?.displayName && user?.displayName && vote.displayName.toLowerCase() === user.displayName.toLowerCase()
         );
       }
       
       // Log the result for debugging
       if (userVote) {
         console.log(`Found ${user.displayName}'s vote: ${userVote.voteValue}`);
+        
+        // Only update if we have a valid vote value and it's different from the current selection
+        if (userVote.voteValue && userVote.voteValue !== selectedVote) {
+          console.log(`Updating selected vote from ${selectedVote} to ${userVote.voteValue}`);
+          setSelectedVote(userVote.voteValue);
+        }
       } else {
         console.log(`No vote found for ${user.displayName}`);
       }
-      
-      // Only update if we have a valid vote value
-      if (userVote && userVote.voteValue) {
-        setSelectedVote(userVote.voteValue);
-      }
     }
-  }, [votes, user]);
+  }, [votes, user, selectedVote]);
 
   // Timer effect
   useEffect(() => {
@@ -202,9 +204,9 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
         });
       } else {
         // Fallback to counting by display names if we don't have userIds
-        const namesWhoVoted = new Set(votes.map(vote => vote.displayName.toLowerCase()));
+        const namesWhoVoted = new Set(votes.filter(v => v?.displayName).map(vote => vote.displayName.toLowerCase()));
         connectedUsers.forEach(user => {
-          if (namesWhoVoted.has(user.displayName.toLowerCase())) {
+          if (user?.displayName && namesWhoVoted.has(user.displayName.toLowerCase())) {
             voteCount++;
           }
         });
@@ -231,15 +233,16 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
     if (!session || session.votesRevealed) return;
     setSubmitLoading(true);
     try {
-      // Immediately update the UI to show the selected vote
+      // Ensure we're setting the exact selected value
+      console.log(`User selected vote: ${value}`);
       setSelectedVote(value);
       
       // If the user already voted, update their existing vote in the local state
       if (user) {
         const updatedVotes = [...votes];
         const existingVoteIndex = updatedVotes.findIndex(v => 
-          (v.userId && user.id && v.userId === user.id) || 
-          v.displayName.toLowerCase() === user.displayName.toLowerCase()
+          (v?.userId && user?.id && v.userId === user.id) || 
+          (v?.displayName && user?.displayName && v.displayName.toLowerCase() === user.displayName.toLowerCase())
         );
         
         if (existingVoteIndex >= 0) {
@@ -252,38 +255,52 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
         }
       }
       
-      // Send the vote to the server
-      actions.submitVote(story.id, value);
-      showToast('Your vote has been submitted', 'success');
+      // Send the vote to the server - Use a small timeout to ensure state is updated first
+      setTimeout(() => {
+        actions.submitVote(story.id, value);
+        showToast('Your vote has been submitted', 'success');
+      }, 10);
     } catch (error) {
       console.error('Error submitting vote:', error);
       showToast('Failed to submit vote. Please try again.', 'error');
+      // Reset selected vote to previous value if there was an error
+      if (user) {
+        const userVote = votes.find(vote => 
+          (vote?.userId && user?.id && vote.userId === user.id) || 
+          (vote?.displayName && user?.displayName && vote.displayName.toLowerCase() === user.displayName.toLowerCase())
+        );
+        if (userVote) {
+          setSelectedVote(userVote.voteValue);
+        }
+      }
     } finally {
       setTimeout(() => setSubmitLoading(false), 500);
     }
   };
 
   const handleSavePoints = async () => {
-    if (!finalPoints.trim()) return;
+    if (!finalPoints.trim() || !session) {
+      showToast('Cannot save points: missing estimate or session.', 'error');
+      return;
+    }
     setSaveLoading(true);
     try {
-      console.log(`Saving points "${finalPoints}" for story ID: ${story.id}`);
-      await onSavePoints(story.id, finalPoints.trim());
+      console.log(`Saving final estimate "${finalPoints}" for story ID: ${story.id}, session ID: ${session.id}`);
+      
+      // Use new saveFinalEstimate action that saves all votes + final estimate to DB
+      actions.saveFinalEstimate(story.id, session.id, finalPoints.trim());
+      
       showToast(`Points saved: ${finalPoints}`, 'success');
       
-      // End the voting session explicitly
-      if (session) {
-        console.log(`Ending voting session for story ID: ${story.id}`);
-        actions.endVotingSession(story.id);
-      }
-      
-      // Force close the modal
-      onClose();
+      // Wait a moment for server to process, then close
+      setTimeout(() => {
+        onClose();
+      }, 500);
     } catch (error) {
       console.error('Error saving points:', error);
       showToast('Failed to save points. Please try again.', 'error');
     } finally {
-      setSaveLoading(false);
+      setTimeout(() => setSaveLoading(false), 600);
     }
   };
 
@@ -571,8 +588,8 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
                 {connectedUsers.map((participant, index) => {
                   // Check if this user has voted - try userId first, fallback to displayName
                   const hasVoted = votes.some(vote => 
-                    (vote.userId && participant.id && vote.userId === participant.id) || 
-                    (vote.displayName.toLowerCase() === participant.displayName.toLowerCase())
+                    (vote?.userId && participant?.id && vote.userId === participant.id) || 
+                    (vote?.displayName && participant?.displayName && vote.displayName.toLowerCase() === participant.displayName.toLowerCase())
                   );
                   
                   return (
@@ -618,28 +635,37 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
 
           {/* Voting Cards */}
           <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-13 gap-3 mb-6">
-            {deck.map((value) => (
-              <button
-                key={value}
-                onClick={() => handleSubmitVote(value)}
-                disabled={(session && session.votesRevealed) || submitLoading}
-                className={`aspect-[3/4] rounded-lg border-2 font-bold text-lg transition-all duration-200 ${
-                  selectedVote === value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg scale-105'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:scale-105'
-                } disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden`}
-              >
-                {submitLoading && selectedVote === value ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-100/80">
-                    <Spinner size="sm" className="text-blue-600" />
-                  </div>
-                ) : null}
-                {value}
-                {selectedVote === value && !submitLoading && (
-                  <span className="absolute bottom-1 right-1 text-xs text-green-600 animate-pulse">✓</span>
-                )}
-              </button>
-            ))}
+            {deck.map((value) => {
+              // Debug selected vote
+              if (selectedVote === value) {
+                console.log(`Card ${value} is selected`);
+              }
+              
+              return (
+                <button
+                  key={value}
+                  onClick={() => handleSubmitVote(value)}
+                  disabled={(session && session.votesRevealed) || submitLoading}
+                  data-selected={selectedVote === value ? "true" : "false"}
+                  data-value={value}
+                  className={`aspect-[3/4] rounded-lg border-2 font-bold text-lg transition-all duration-200 ${
+                    selectedVote === value
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg scale-105'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:scale-105'
+                  } disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden`}
+                >
+                  {submitLoading && selectedVote === value ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-blue-100/80">
+                      <Spinner size="sm" className="text-blue-600" />
+                    </div>
+                  ) : null}
+                  {value}
+                  {selectedVote === value && !submitLoading && (
+                    <span className="absolute bottom-1 right-1 text-xs text-green-600 animate-pulse">✓</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Vote Results */}

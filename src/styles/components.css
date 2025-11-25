@@ -1,0 +1,317 @@
+/* Component-specific styles using BEM methodology */
+
+/* Button Component Styles */
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn--primary {
+  @apply bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 focus:ring-blue-500;
+}
+
+.btn--secondary {
+  @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-blue-500;
+}
+
+.btn--success {
+  @apply bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 focus:ring-green-500;
+}
+
+.btn--warning {
+  @apply bg-gradient-to-r from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700 focus:ring-yellow-500;
+}
+
+.btn--danger {
+  @apply bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 focus:ring-red-500;
+}
+
+.btn--small,
+.btn--sm {
+  @apply px-3 py-1.5 text-xs;
+}
+
+.btn--xs {
+  @apply px-2 py-1 text-xs;
+}
+
+.btn--large {
+  @apply px-6 py-3 text-base;
+}
+
+.btn--icon-only,
+.btn--icon {
+  @apply p-2 w-10 h-10;
+}
+
+.btn--ghost {
+  @apply bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500;
+}
+
+/* Card Component Styles */
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
+}
+
+.card--elevated {
+  @apply shadow-lg;
+}
+
+.card--interactive {
+  @apply hover:shadow-md transition-shadow duration-200 cursor-pointer;
+}
+
+.card__header {
+  @apply px-6 py-4 border-b border-gray-200;
+}
+
+.card__content {
+  @apply px-6 py-4;
+}
+
+.card__footer {
+  @apply px-6 py-4 border-t border-gray-200 bg-gray-50;
+}
+
+/* Form Component Styles */
+.form-field {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-2;
+}
+
+.form-input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.form-textarea {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none;
+}
+
+.form-select {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.form-error {
+  @apply text-red-600 text-sm mt-1;
+}
+
+.form-help {
+  @apply text-gray-500 text-sm mt-1;
+}
+
+/* Badge Component Styles */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge--primary {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.badge--success {
+  @apply bg-green-100 text-green-800;
+}
+
+.badge--warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.badge--danger {
+  @apply bg-red-100 text-red-800;
+}
+
+.badge--neutral {
+  @apply bg-gray-100 text-gray-800;
+}
+
+/* Modal Component Styles */
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-[var(--z-modal-backdrop)] flex items-center justify-center p-4;
+}
+
+.modal {
+  @apply bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto z-[var(--z-modal)];
+}
+
+.modal__header {
+  @apply flex items-center justify-between p-6 border-b border-gray-200;
+}
+
+.modal__content {
+  @apply p-6;
+}
+
+.modal__footer {
+  @apply flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50;
+}
+
+/* Header Component Styles */
+.header {
+  @apply bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-[--z-sticky];
+}
+
+.header__container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.header__content {
+  @apply flex items-center justify-between h-16;
+}
+
+.header__brand {
+  @apply flex items-center;
+}
+
+.header__title {
+  @apply text-xl font-bold text-gray-900;
+}
+
+.header__subtitle {
+  @apply text-sm text-gray-600;
+}
+
+/* Navigation Component Styles */
+.nav {
+  @apply flex space-x-1;
+}
+
+.nav__item {
+  @apply px-4 py-2 rounded-lg text-sm font-medium transition-colors;
+}
+
+.nav__item--active {
+  @apply bg-blue-100 text-blue-700;
+}
+
+.nav__item--inactive {
+  @apply text-gray-500 hover:text-gray-700 hover:bg-gray-100;
+}
+
+/* Status Component Styles */
+.status {
+  @apply flex items-center text-sm;
+}
+
+.status--connected {
+  @apply text-green-600;
+}
+
+.status--disconnected {
+  @apply text-red-600;
+}
+
+.status--pending {
+  @apply text-yellow-600;
+}
+
+.status__indicator {
+  @apply w-2 h-2 rounded-full mr-2;
+}
+
+.status__indicator--connected {
+  @apply bg-green-500;
+}
+
+.status__indicator--disconnected {
+  @apply bg-red-500;
+}
+
+.status__indicator--pending {
+  @apply bg-yellow-500;
+}
+
+/* Loading Component Styles */
+.loading-spinner {
+  @apply animate-spin rounded-full border-2 border-gray-300 border-t-blue-600;
+}
+
+.loading-spinner--small {
+  @apply w-4 h-4;
+}
+
+.loading-spinner--medium {
+  @apply w-8 h-8;
+}
+
+.loading-spinner--large {
+  @apply w-12 h-12;
+}
+
+/* Toast Component Styles */
+.toast {
+  @apply fixed top-4 right-4 max-w-sm w-full bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-[--z-toast];
+}
+
+.toast--success {
+  @apply border-l-4 border-l-green-500;
+}
+
+.toast--warning {
+  @apply border-l-4 border-l-yellow-500;
+}
+
+.toast--error {
+  @apply border-l-4 border-l-red-500;
+}
+
+.toast--info {
+  @apply border-l-4 border-l-blue-500;
+}
+
+/* Error Boundary */
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 2rem;
+}
+
+.error-boundary__content {
+  max-width: 500px;
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.error-boundary__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #dc2626;
+  margin-bottom: 1rem;
+}
+
+.error-boundary__message {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.error-boundary__details {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.error-boundary__details summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.error-boundary__stack {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #6b7280;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
