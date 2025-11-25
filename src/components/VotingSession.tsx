@@ -254,11 +254,9 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
         }
       }
       
-      // Send the vote to the server - Use a small timeout to ensure state is updated first
-      setTimeout(() => {
-        actions.submitVote(story.id, value);
-        showToast('Your vote has been submitted', 'success');
-      }, 10);
+      // Send the vote to the server
+      actions.submitVote(story.id, value);
+      showToast('Your vote has been submitted', 'success');
     } catch (error) {
       console.error('Error submitting vote:', error);
       showToast('Failed to submit vote. Please try again.', 'error');
