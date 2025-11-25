@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, MessageSquare, CheckCircle, AlertCircle, ArrowLeft, Zap, Wifi, WifiOff, Edit2, Trash2, Check, X } from 'lucide-react';
+import { Users, Plus, MessageSquare, CheckCircle, AlertCircle, ArrowLeft, Wifi, WifiOff, Edit2, Trash2, Check, X, Sparkles, ThumbsUp, Settings, ArrowUpDown } from 'lucide-react';
 import { useRetrospective } from '../hooks/useRetrospective';
+import { getAllSchemes, getSchemeConfig, type RetrospectiveScheme } from '../utils/retrospectiveSchemes';
 import '../styles/components/retrospective.css';
 
 interface RetrospectiveAppProps {
   user: any;
+  roomId?: string;
   onBackToSelector: () => void;
   hideHeader?: boolean;
 }
 
-export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBackToSelector, hideHeader = false }) => {
-  console.log('🔄 RetrospectiveApp rendering with:', { user, hideHeader });
+export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, roomId, onBackToSelector, hideHeader = false }) => {
+  console.log('🔄 RetrospectiveApp rendering with:', { user, roomId, hideHeader });
   
   const { 
     connected, 
@@ -19,9 +21,12 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
     votes,
     session, 
     connectedUsers, 
+    currentScheme,
+    schemeCategories,
+    aiActionItems,
     actions,
     error 
-  } = useRetrospective();
+  } = useRetrospective(roomId);
 
   // Category-specific input states
   const [categoryInputs, setCategoryInputs] = useState({
@@ -34,6 +39,12 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
   // Edit functionality state
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  
+  // Scheme and settings state
+  const [showSchemeSelector, setShowSchemeSelector] = useState(false);
+  const [selectedScheme, setSelectedScheme] = useState<RetrospectiveScheme>(currentScheme as RetrospectiveScheme || 'standard');
+  const [sortByVotes, setSortByVotes] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   // Join retrospective session when component mounts
   useEffect(() => {
@@ -41,15 +52,6 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
       actions.joinRetrospectiveSession(user.displayName);
     }
   }, [user, connected]); // Removed actions from dependencies to prevent re-runs
-
-  const addItemToCategory = (category: 'went-well' | 'to-improve' | 'action-items') => {
-    const text = categoryInputs[category];
-    if (!text.trim()) return;
-    
-    actions.addItem(text.trim(), category);
-    setCategoryInputs(prev => ({ ...prev, [category]: '' }));
-    setShowingInputFor(null);
-  };
 
   const showInputForCategory = (category: string) => {
     setShowingInputFor(category);
@@ -97,21 +99,86 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
     return retroUser && (item.authorId === retroUser.id || item.author === retroUser.displayName);
   };
 
-  const getItemsByCategory = (category: 'went-well' | 'to-improve' | 'action-items') => {
-    return items.filter(item => item.category === category);
+  // Sync selected scheme with hook state
+  useEffect(() => {
+    if (currentScheme && currentScheme !== selectedScheme) {
+      setSelectedScheme(currentScheme as RetrospectiveScheme);
+    }
+  }, [currentScheme]);
+
+  // Get active categories from scheme or default
+  const activeCategories = schemeCategories.length > 0 
+    ? schemeCategories 
+    : getSchemeConfig(selectedScheme).categories;
+
+  const getItemsByCategory = (categoryId: string) => {
+    const categoryItems = items.filter(item => {
+      const itemCategory = item.category || (item as any).categoryId;
+      return itemCategory === categoryId;
+    });
+    
+    // Sort by votes if enabled
+    if (sortByVotes) {
+      return categoryItems.sort((a, b) => {
+        const aVotes = votes[a.id]?.length || (a as any).votes || 0;
+        const bVotes = votes[b.id]?.length || (b as any).votes || 0;
+        return bVotes - aVotes;
+      });
+    }
+    
+    return categoryItems;
   };
 
-  const getCategoryInfo = (category: string) => {
-    switch (category) {
-      case 'went-well':
-        return { title: 'What Went Well', icon: CheckCircle, color: 'green', bgColor: 'bg-green-50', borderColor: 'border-green-200' };
-      case 'to-improve':
-        return { title: 'What to Improve', icon: AlertCircle, color: 'red', bgColor: 'bg-red-50', borderColor: 'border-red-200' };
-      case 'action-items':
-        return { title: 'Action Items', icon: MessageSquare, color: 'blue', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' };
-      default:
-        return { title: '', icon: MessageSquare, color: 'gray', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' };
+  const getCategoryInfo = (categoryId: string) => {
+    const category = activeCategories.find(cat => cat.id === categoryId);
+    if (!category) {
+      return { title: '', icon: MessageSquare, color: 'gray', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' };
     }
+    
+    const iconMap: Record<string, any> = {
+      'check-circle': CheckCircle,
+      'alert-circle': AlertCircle,
+      'message-square': MessageSquare,
+      'play-circle': CheckCircle,
+      'x-circle': AlertCircle,
+      'repeat': CheckCircle,
+      'frown': AlertCircle,
+      'meh': AlertCircle,
+      'smile': CheckCircle,
+      'thumbs-up': ThumbsUp,
+      'book-open': MessageSquare,
+      'alert-triangle': AlertCircle,
+      'heart': CheckCircle,
+    };
+    
+    return {
+      title: category.name,
+      icon: iconMap[category.icon || 'message-square'] || MessageSquare,
+      color: category.color,
+      bgColor: `bg-${category.color}-50`,
+      borderColor: `border-${category.color}-200`
+    };
+  };
+  
+  const handleSchemeChange = (scheme: RetrospectiveScheme) => {
+    setSelectedScheme(scheme);
+    actions.changeScheme(scheme);
+    setShowSchemeSelector(false);
+  };
+  
+  const handleGenerateAIActions = async () => {
+    setIsGeneratingAI(true);
+    try {
+      actions.generateAIActions();
+      setTimeout(() => setIsGeneratingAI(false), 2000);
+    } catch (error) {
+      console.error('Error generating AI actions:', error);
+      setIsGeneratingAI(false);
+    }
+  };
+  
+  const getVoteCount = (itemId: string) => {
+    return votes[itemId]?.length || 0;
   };
 
   const activePhase = session?.phase || 'gather';
@@ -163,6 +230,55 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
               </div>
               
               <div className="retro-header__right">
+                {/* Scheme Selector */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSchemeSelector(!showSchemeSelector)}
+                    className="btn btn--ghost btn--sm"
+                    title="Change retrospective scheme"
+                  >
+                    <Settings className="icon icon--xs" />
+                    <span className="text--sm">{getSchemeConfig(selectedScheme).name}</span>
+                  </button>
+                  
+                  {showSchemeSelector && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowSchemeSelector(false)} />
+                      <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                        <div className="p-3 border-b border-gray-200">
+                          <h3 className="text-sm font-semibold text-gray-900">Retrospective Format</h3>
+                        </div>
+                        <div className="p-2">
+                          {getAllSchemes().map(scheme => (
+                            <button
+                              key={scheme.id}
+                              onClick={() => handleSchemeChange(scheme.id)}
+                              className={`w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors ${
+                                selectedScheme === scheme.id ? 'bg-blue-50 border border-blue-200' : ''
+                              }`}
+                            >
+                              <div className="font-medium text-sm text-gray-900">{scheme.name}</div>
+                              <div className="text-xs text-gray-600 mt-1">{scheme.description}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                {/* Sort Toggle */}
+                <button
+                  onClick={() => setSortByVotes(!sortByVotes)}
+                  className={`btn btn--sm ${
+                    sortByVotes ? 'btn--primary' : 'btn--ghost'
+                  }`}
+                  title="Sort by votes"
+                >
+                  <ArrowUpDown className="icon icon--xs" />
+                  <span className="text--sm">Sort by Votes</span>
+                </button>
+
                 {/* Connection Status */}
                 <div className="retro-status">
                   {connected ? (
@@ -190,6 +306,62 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
           </div>
         </header>
       )}
+
+      {/* Toolbar - always visible for scheme selector and sort */}
+      <div className="bg-white border-b border-gray-200 py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-end space-x-3">
+            {/* Scheme Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSchemeSelector(!showSchemeSelector)}
+                className="btn btn--ghost btn--sm flex items-center space-x-2"
+                title="Change retrospective scheme"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="text-sm">{getSchemeConfig(selectedScheme).name}</span>
+              </button>
+              
+              {showSchemeSelector && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSchemeSelector(false)} />
+                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                    <div className="p-3 border-b border-gray-200">
+                      <h3 className="text-sm font-semibold text-gray-900">Retrospective Format</h3>
+                    </div>
+                    <div className="p-2">
+                      {getAllSchemes().map(scheme => (
+                        <button
+                          key={scheme.id}
+                          onClick={() => handleSchemeChange(scheme.id)}
+                          className={`w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors ${
+                            selectedScheme === scheme.id ? 'bg-blue-50 border border-blue-200' : ''
+                          }`}
+                        >
+                          <div className="font-medium text-sm text-gray-900">{scheme.name}</div>
+                          <div className="text-xs text-gray-600 mt-1">{scheme.description}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {/* Sort Toggle */}
+            <button
+              onClick={() => setSortByVotes(!sortByVotes)}
+              className={`btn btn--sm flex items-center space-x-2 ${
+                sortByVotes ? 'btn--primary' : 'btn--ghost'
+              }`}
+              title="Sort by votes"
+            >
+              <ArrowUpDown className="w-4 h-4" />
+              <span className="text-sm">Sort by Votes</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Phase Selector */}
       <div className="retro-phases">
@@ -223,13 +395,14 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
 
         {/* Retrospective Items */}
         <div className="retro-categories">
-          {(['went-well', 'to-improve', 'action-items'] as const).map((category) => {
-            const categoryInfo = getCategoryInfo(category);
-            const categoryItems = getItemsByCategory(category);
+          {activeCategories.map((category) => {
+            const categoryInfo = getCategoryInfo(category.id);
+            const categoryItems = getItemsByCategory(category.id);
             const IconComponent = categoryInfo.icon;
+            const isActionItems = category.id === 'action-items';
             
             return (
-              <div key={category} className={`retro-category retro-category--${category}`}>
+              <div key={category.id} className={`retro-category retro-category--${category.id}`}>
                 <div className="retro-category__header">
                   <div className="retro-category__title-group">
                     <IconComponent className="retro-category__icon" />
@@ -238,30 +411,49 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                     </h3>
                   </div>
                   
-                  {showingInputFor !== category && (
-                    <button
-                      onClick={() => showInputForCategory(category)}
-                      className={`btn btn--sm retro-add-btn retro-add-btn--${category}`}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add
-                    </button>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {isActionItems && (
+                      <button
+                        onClick={handleGenerateAIActions}
+                        disabled={isGeneratingAI || items.filter(i => (i.category || (i as any).categoryId) !== 'action-items').length === 0}
+                        className="btn btn--primary btn--sm"
+                        title="Generate action items with AI"
+                      >
+                        <Sparkles className="w-4 h-4 mr-1" />
+                        {isGeneratingAI ? 'Generating...' : 'AI Actions'}
+                      </button>
+                    )}
+                    
+                    {showingInputFor !== category.id && (
+                      <button
+                        onClick={() => showInputForCategory(category.id)}
+                        className={`btn btn--sm retro-add-btn retro-add-btn--${category.id}`}
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Add input field for this category */}
-                {showingInputFor === category && (
+                {showingInputFor === category.id && (
                   <div className="retro-input-form">
                     <textarea
-                      value={categoryInputs[category as keyof typeof categoryInputs]}
-                      onChange={(e) => setCategoryInputs(prev => ({ ...prev, [category]: e.target.value }))}
+                      value={categoryInputs[category.id as keyof typeof categoryInputs] || ''}
+                      onChange={(e) => setCategoryInputs(prev => ({ ...prev, [category.id]: e.target.value }))}
                       placeholder={`Add to ${categoryInfo.title.toLowerCase()}...`}
                       className="retro-input"
                       rows={2}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
-                          addItemToCategory(category as 'went-well' | 'to-improve' | 'action-items');
+                          const text = categoryInputs[category.id as keyof typeof categoryInputs] || '';
+                          if (text.trim()) {
+                            actions.addItem(text.trim(), category.id as any);
+                            setCategoryInputs(prev => ({ ...prev, [category.id]: '' }));
+                            setShowingInputFor(null);
+                          }
                         } else if (e.key === 'Escape') {
                           hideInput();
                         }
@@ -276,16 +468,59 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                         Cancel
                       </button>
                       <button
-                        onClick={() => addItemToCategory(category as 'went-well' | 'to-improve' | 'action-items')}
-                        disabled={!categoryInputs[category as keyof typeof categoryInputs].trim()}
-                        className={`btn btn--primary btn--sm retro-add-btn retro-add-btn--${category} ${
-                          !categoryInputs[category as keyof typeof categoryInputs].trim()
+                        onClick={() => {
+                          const text = categoryInputs[category.id as keyof typeof categoryInputs] || '';
+                          if (text.trim()) {
+                            actions.addItem(text.trim(), category.id as any);
+                            setCategoryInputs(prev => ({ ...prev, [category.id]: '' }));
+                            setShowingInputFor(null);
+                          }
+                        }}
+                        disabled={!(categoryInputs[category.id as keyof typeof categoryInputs] || '').trim()}
+                        className={`btn btn--primary btn--sm retro-add-btn retro-add-btn--${category.id} ${
+                          !(categoryInputs[category.id as keyof typeof categoryInputs] || '').trim()
                             ? 'btn--disabled'
                             : ''
                         }`}
                       >
                         Add Item
                       </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* AI Draft Actions */}
+                {isActionItems && aiActionItems.length > 0 && (
+                  <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-3 mb-3">
+                    <div className="flex items-center mb-2">
+                      <Sparkles className="w-4 h-4 text-purple-600 mr-2" />
+                      <span className="text-sm font-medium text-purple-900">AI-Generated Suggestions</span>
+                    </div>
+                    <div className="space-y-2">
+                      {aiActionItems.map((aiItem) => (
+                        <div key={aiItem.id} className="bg-white rounded-lg p-3 border border-purple-200">
+                          <div className="text-sm font-medium text-gray-900 mb-1">{aiItem.title}</div>
+                          <div className="text-xs text-gray-600 mb-2">{aiItem.description}</div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => actions.approveAIAction(aiItem.id)}
+                              className="btn btn--primary btn--xs"
+                              title="Approve and add to action items"
+                            >
+                              <Check className="w-3 h-3 mr-1" />
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => actions.discardAIAction(aiItem.id)}
+                              className="btn btn--ghost btn--xs"
+                              title="Discard suggestion"
+                            >
+                              <X className="w-3 h-3 mr-1" />
+                              Discard
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -362,9 +597,10 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
                                       ? 'retro-vote-btn--active'
                                       : ''
                                   }`}
+                                  title={actions.hasUserVoted(item.id) ? 'Remove vote' : 'Vote for this item'}
                                 >
-                                  <Zap className="w-3 h-3 mr-1" />
-                                  {item.votes}
+                                  <ThumbsUp className="w-3 h-3 mr-1" />
+                                  <span className="font-medium">{getVoteCount(item.id)}</span>
                                 </button>
                                 
                                 {canEditItem(item) && (
@@ -408,19 +644,28 @@ export const RetrospectiveApp: React.FC<RetrospectiveAppProps> = ({ user, onBack
           <div className="retro-summary">
             <h3 className="retro-summary__title">Session Summary</h3>
             <div className="retro-summary__stats">
-              <div className="retro-stat retro-stat--went-well">
-                <div className="retro-stat__number">{getItemsByCategory('went-well').length}</div>
-                <div className="retro-stat__label">Went Well</div>
-              </div>
-              <div className="retro-stat retro-stat--to-improve">
-                <div className="retro-stat__number">{getItemsByCategory('to-improve').length}</div>
-                <div className="retro-stat__label">To Improve</div>
-              </div>
-              <div className="retro-stat retro-stat--action-items">
-                <div className="retro-stat__number">{getItemsByCategory('action-items').length}</div>
-                <div className="retro-stat__label">Action Items</div>
-              </div>
+              {activeCategories.map((category) => {
+                const count = getItemsByCategory(category.id).length;
+                const totalVotes = getItemsByCategory(category.id).reduce((sum, item) => sum + getVoteCount(item.id), 0);
+                return (
+                  <div key={category.id} className={`retro-stat retro-stat--${category.id}`}>
+                    <div className="retro-stat__number">{count}</div>
+                    <div className="retro-stat__label">{category.name}</div>
+                    {totalVotes > 0 && (
+                      <div className="text-xs text-gray-500 mt-1 flex items-center justify-center">
+                        <ThumbsUp className="w-3 h-3 mr-1" />
+                        {totalVotes}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            {sortByVotes && (
+              <div className="text-center text-sm text-blue-600 mt-2">
+                ↕ Sorted by votes
+              </div>
+            )}
           </div>
         )}
       </main>

@@ -1,15 +1,9 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { socketService } from '../services/socketService';
-import { storageService } from '../services/storageService';
-import { SOCKET_EVENTS, RETROSPECTIVE_CATEGORIES } from '../constants';
 import type { 
   RetrospectiveItem, 
-  RetrospectiveSession, 
-  User,
-  LoadingState 
+  RetrospectiveSession
 } from '../types';
-import { utils } from '../utils';
 
 // Temporary type for RetrospectiveVote until it's added to main types
 type RetrospectiveVote = {
@@ -20,9 +14,10 @@ type RetrospectiveVote = {
   votedAt: string;
 };
 
-export const useRetrospective = () => {
+export const useRetrospective = (roomId?: string) => {
   const socketRef = useRef<Socket | null>(null);
   const joinedRef = useRef<boolean>(false);
+  const roomIdRef = useRef<string | undefined>(roomId);
   const [connected, setConnected] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [items, setItems] = useState<RetrospectiveItem[]>([]);
@@ -30,6 +25,14 @@ export const useRetrospective = () => {
   const [session, setSession] = useState<RetrospectiveSession | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [currentScheme, setCurrentScheme] = useState<string>('standard');
+  const [schemeCategories, setSchemeCategories] = useState<any[]>([]);
+  const [aiActionItems, setAiActionItems] = useState<any[]>([]);
+  
+  // Update roomId ref when prop changes
+  useEffect(() => {
+    roomIdRef.current = roomId;
+  }, [roomId]);
 
   useEffect(() => {
     // Prevent multiple connections
@@ -132,6 +135,38 @@ export const useRetrospective = () => {
       setSession(prev => prev ? { ...prev, phase: data.phase } : null);
     });
 
+    socketRef.current.on('retrospective_scheme_changed', (data: any) => {
+      setCurrentScheme(data.scheme);
+      setSchemeCategories(data.categories);
+    });
+
+    socketRef.current.on('retrospective_ai_actions_generated', (data: any) => {
+      setAiActionItems(data.actionItems);
+    });
+
+    socketRef.current.on('retrospective_action_item_approved', (data: any) => {
+      // Remove from AI suggestions
+      setAiActionItems(prev => prev.filter(item => item.id !== data.actionItem.id));
+      
+      // Add approved action as a regular retrospective item
+      const newItem: RetrospectiveItem = {
+        id: data.actionItem.id,
+        roomId: session?.roomId || '',
+        content: data.actionItem.title + (data.actionItem.description ? ': ' + data.actionItem.description : ''),
+        category: 'action-items',
+        author: user?.displayName || 'AI Assistant',
+        authorId: user?.id || 'ai',
+        createdAt: data.actionItem.createdAt ? new Date(data.actionItem.createdAt) : new Date(),
+        updatedAt: new Date(),
+        votes: 0
+      };
+      setItems(prev => [newItem, ...prev]);
+    });
+
+    socketRef.current.on('retrospective_action_item_discarded', (data: any) => {
+      setAiActionItems(prev => prev.filter(item => item.id !== data.actionItemId));
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -148,7 +183,10 @@ export const useRetrospective = () => {
     
     if (socketRef.current && socketRef.current.connected) {
       joinedRef.current = true;
-      socketRef.current.emit('join_retrospective', { displayName });
+      socketRef.current.emit('join_retrospective', { 
+        displayName,
+        roomId: roomIdRef.current 
+      });
     } else {
       setError('Not connected to retrospective server');
     }
@@ -207,6 +245,43 @@ export const useRetrospective = () => {
     return votes[itemId]?.some(vote => vote.userId === user.id) || false;
   };
 
+  const changeScheme = (scheme: string) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('change_retrospective_scheme', { scheme });
+    } else {
+      setError('Not connected to retrospective server');
+    }
+  };
+
+  const generateAIActions = () => {
+    if (socketRef.current && socketRef.current.connected) {
+      // Filter items that aren't action items for context
+      const contextItems = items.filter(item => 
+        item.category !== 'action-items' && 
+        (item as any).categoryId !== 'action-items'
+      );
+      socketRef.current.emit('generate_ai_actions', { contextItems });
+    } else {
+      setError('Not connected to retrospective server');
+    }
+  };
+
+  const approveAIAction = (actionItemId: string) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('approve_ai_action', { actionItemId });
+    } else {
+      setError('Not connected to retrospective server');
+    }
+  };
+
+  const discardAIAction = (actionItemId: string) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('discard_ai_action', { actionItemId });
+    } else {
+      setError('Not connected to retrospective server');
+    }
+  };
+
   const resetSession = () => {
     joinedRef.current = false;
     setUser(null);
@@ -214,6 +289,9 @@ export const useRetrospective = () => {
     setVotes({});
     setSession(null);
     setConnectedUsers([]);
+    setCurrentScheme('standard');
+    setSchemeCategories([]);
+    setAiActionItems([]);
   };
 
 
@@ -226,6 +304,9 @@ export const useRetrospective = () => {
     session,
     connectedUsers,
     error,
+    currentScheme,
+    schemeCategories,
+    aiActionItems,
     actions: {
       joinRetrospectiveSession,
       addItem,
@@ -235,6 +316,10 @@ export const useRetrospective = () => {
       removeVote,
       changePhase,
       hasUserVoted,
+      changeScheme,
+      generateAIActions,
+      approveAIAction,
+      discardAIAction,
       resetSession,
     },
   };

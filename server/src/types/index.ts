@@ -152,6 +152,21 @@ export interface UpdateRoomSettingsData {
 }
 
 // ===== RETROSPECTIVE TYPES =====
+export type RetrospectiveScheme = 'standard' | 'start-stop-continue' | 'mad-sad-glad' | '4ls';
+
+export interface RetrospectiveSchemeConfig {
+  id: RetrospectiveScheme;
+  name: string;
+  description: string;
+  categories: {
+    id: string;
+    name: string;
+    color: string;
+    icon?: string;
+    description?: string;
+  }[];
+}
+
 export interface RetrospectiveParticipant {
   userId: string;
   name: string;
@@ -203,6 +218,9 @@ export interface RetrospectiveActionItem {
   priority: 'low' | 'medium' | 'high';
   status: 'open' | 'in-progress' | 'completed';
   dueDate?: string;
+  isDraft?: boolean; // AI-generated draft
+  aiGenerated?: boolean; // Flag to indicate AI origin
+  sourceItemIds?: string[]; // Reference to items that inspired this action
   createdAt: string;
 }
 
@@ -229,6 +247,8 @@ export interface RetrospectiveSettings {
   maxItemsPerCategory: number;
   votingEnabled: boolean;
   votesPerPerson: number;
+  scheme: RetrospectiveScheme; // Selected scheme
+  enableAI: boolean; // Enable AI-assisted action generation
 }
 
 export interface RetrospectiveStats {
@@ -332,6 +352,10 @@ export interface ServerToClientEvents {
   retrospective_vote_added: (vote: RetrospectiveVote) => void;
   retrospective_vote_removed: (data: { itemId: string; voteId: string }) => void;
   retrospective_phase_changed: (data: { phase: string }) => void;
+  retrospective_scheme_changed: (data: { scheme: RetrospectiveScheme; categories: RetrospectiveCategory[] }) => void;
+  retrospective_ai_actions_generated: (data: { actionItems: RetrospectiveActionItem[] }) => void;
+  retrospective_action_item_approved: (data: { actionItem: RetrospectiveActionItem }) => void;
+  retrospective_action_item_discarded: (data: { actionItemId: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -373,4 +397,8 @@ export interface ClientToServerEvents {
   vote_retrospective_item: (data: { itemId: string }) => void;
   remove_retrospective_vote: (data: { itemId: string }) => void;
   change_retrospective_phase: (data: { phase: string }) => void;
+  change_retrospective_scheme: (data: { scheme: RetrospectiveScheme }) => void;
+  generate_ai_actions: (data: { contextItems: RetrospectiveItem[] }) => void;
+  approve_ai_action: (data: { actionItemId: string }) => void;
+  discard_ai_action: (data: { actionItemId: string }) => void;
 }

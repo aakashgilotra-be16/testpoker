@@ -25,16 +25,26 @@
   @apply bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 focus:ring-red-500;
 }
 
-.btn--small {
+.btn--small,
+.btn--sm {
   @apply px-3 py-1.5 text-xs;
+}
+
+.btn--xs {
+  @apply px-2 py-1 text-xs;
 }
 
 .btn--large {
   @apply px-6 py-3 text-base;
 }
 
-.btn--icon-only {
+.btn--icon-only,
+.btn--icon {
   @apply p-2 w-10 h-10;
+}
+
+.btn--ghost {
+  @apply bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500;
 }
 
 /* Card Component Styles */

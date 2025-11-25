@@ -3,6 +3,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/database';
 import { connectedUsers, userRooms, roomConnectedUsers, socketToUserId } from './utils/dataStore';
 import { setupRoomHandlers } from './handlers/roomHandlers';
@@ -11,8 +13,17 @@ import { setupVotingHandlers } from './handlers/votingHandlers';
 import { setupRetrospectiveHandlers } from './handlers/retrospectiveHandlers';
 import type { ServerToClientEvents, ClientToServerEvents } from './types/index';
 
-// Load environment variables
-dotenv.config();
+// Get current directory in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from server/.env
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+// Log environment for debugging
+console.log('🔧 Environment check:');
+console.log('  - NODE_ENV:', process.env.NODE_ENV || 'development');
+console.log('  - GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Loaded' : '❌ Missing');
 
 // Connect to MongoDB
 connectDB();
