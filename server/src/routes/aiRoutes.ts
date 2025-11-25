@@ -1,6 +1,6 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { Retrospective } from '../models/Retrospective';
-import { aiService } from '../services/AIService';
+import { generateAIActionItems } from '../services/AIService';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
@@ -9,7 +9,7 @@ const router = express.Router();
  * Generate AI action items for a retrospective
  * POST /api/retrospectives/:id/generate-action-items
  */
-router.post('/:id/generate-action-items', async (req, res) => {
+router.post('/:id/generate-action-items', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { teamContext, methodology } = req.body;

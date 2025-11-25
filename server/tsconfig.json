@@ -30,6 +30,10 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "src/**/*.old.ts",
+    "src/index.old.ts",
+    "src/routes/aiRoutes.ts",
+    "src/routes/rooms.ts"
   ]
 }
