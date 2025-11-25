@@ -3,8 +3,8 @@ services:
     name: planning-poker-backend
     env: node
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: cd server && npm install && npm run build
+    startCommand: cd server && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -13,11 +13,11 @@ services:
           type: web
           name: planning-poker-backend
           property: port
+      - key: MONGODB_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AI_ENABLED
+        value: true
     healthCheckPath: /health
     autoDeploy: true
-    rootDir: ./
-    buildFilter:
-      paths:
-        - server/**
-        - package.json
-        - package-lock.json
