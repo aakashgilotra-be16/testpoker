@@ -70,10 +70,6 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
   perMessageDeflate: false
 });
 
-// REST API routes
-import roomRoutes from './routes/rooms';
-app.use('/api', roomRoutes);
-
 // Health check endpoints
 app.get('/', (req, res) => {
   res.json({ 
