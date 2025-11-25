@@ -5,13 +5,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import connectDB from './config/database';
-import { connectedUsers, userRooms, roomConnectedUsers, socketToUserId } from './utils/dataStore';
-import { setupRoomHandlers } from './handlers/roomHandlers';
-import { setupStoryHandlers } from './handlers/storyHandlers';
-import { setupVotingHandlers } from './handlers/votingHandlers';
-import { setupRetrospectiveHandlers } from './handlers/retrospectiveHandlers';
-import type { ServerToClientEvents, ClientToServerEvents } from './types/index';
+import connectDB from './config/database.js';
+import { connectedUsers, userRooms, roomConnectedUsers, socketToUserId } from './utils/dataStore.js';
+import { setupRoomHandlers } from './handlers/roomHandlers.js';
+import { setupStoryHandlers } from './handlers/storyHandlers.js';
+import { setupVotingHandlers } from './handlers/votingHandlers.js';
+import { setupRetrospectiveHandlers } from './handlers/retrospectiveHandlers.js';
+import type { ServerToClientEvents, ClientToServerEvents } from './types/index.js';
 
 // Get current directory in ES modules
 const __filename = fileURLToPath(import.meta.url);
