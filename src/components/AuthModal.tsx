@@ -5,9 +5,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onJoin: (displayName: string) => void;
+  selectedApp?: 'estimation' | 'retrospective';
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onJoin }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onJoin, selectedApp }) => {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -35,7 +36,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onJoin })
   if (!isOpen) return null;
 
   const trimmedName = displayName.trim().toLowerCase();
-  const isStoryCreator = trimmedName === 'aakash' || trimmedName === 'mohith';
+  const isStoryCreator = selectedApp !== 'retrospective' && (trimmedName === 'aakash' || trimmedName === 'mohith');
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -44,7 +45,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onJoin })
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
             <User className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Planning Poker</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Welcome to {selectedApp === 'retrospective' ? 'Retrospective Sessions' : 'Planning Poker'}
+          </h2>
           <p className="text-gray-600">Enter your name to join the session</p>
         </div>
 
@@ -67,28 +70,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onJoin })
 
           {displayName.trim() && (
             <div className={`p-4 rounded-lg border ${
-              isStoryCreator 
-                ? 'bg-blue-50 border-blue-200' 
-                : 'bg-gray-50 border-gray-200'
+              selectedApp === 'retrospective'
+                ? 'bg-purple-50 border-purple-200'
+                : isStoryCreator 
+                  ? 'bg-blue-50 border-blue-200' 
+                  : 'bg-gray-50 border-gray-200'
             }`}>
               <div className="flex items-center">
-                {isStoryCreator ? (
+                {selectedApp === 'retrospective' ? (
+                  <Users className="w-5 h-5 text-purple-600 mr-2" />
+                ) : isStoryCreator ? (
                   <Crown className="w-5 h-5 text-blue-600 mr-2" />
                 ) : (
                   <Users className="w-5 h-5 text-gray-600 mr-2" />
                 )}
                 <div>
                   <p className={`font-medium ${
-                    isStoryCreator ? 'text-blue-800' : 'text-gray-800'
+                    selectedApp === 'retrospective'
+                      ? 'text-purple-800'
+                      : isStoryCreator ? 'text-blue-800' : 'text-gray-800'
                   }`}>
-                    {isStoryCreator ? 'Story Creator' : 'Team Member'}
+                    {selectedApp === 'retrospective' 
+                      ? 'Team Member' 
+                      : isStoryCreator ? 'Story Creator' : 'Team Member'
+                    }
                   </p>
                   <p className={`text-sm ${
-                    isStoryCreator ? 'text-blue-600' : 'text-gray-600'
+                    selectedApp === 'retrospective'
+                      ? 'text-purple-600'
+                      : isStoryCreator ? 'text-blue-600' : 'text-gray-600'
                   }`}>
-                    {isStoryCreator 
-                      ? 'You can create and manage stories, start voting sessions'
-                      : 'You can participate in voting sessions'
+                    {selectedApp === 'retrospective'
+                      ? 'You can add feedback items and participate in retrospectives'
+                      : isStoryCreator 
+                        ? 'You can create and manage stories, start voting sessions'
+                        : 'You can participate in voting sessions'
                     }
                   </p>
                 </div>
@@ -114,15 +130,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onJoin })
                 Joining...
               </>
             ) : (
-              `Join as ${isStoryCreator ? 'Story Creator' : 'Team Member'}`
+              selectedApp === 'retrospective' 
+                ? 'Join Retrospective Session'
+                : `Join as ${isStoryCreator ? 'Story Creator' : 'Team Member'}`
             )}
           </button>
         </form>
 
         <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm text-yellow-800">
-            <strong>Note:</strong> Only "Aakash" and "Mohith" can create and manage stories. 
-            Everyone else can participate in voting sessions.
+            <strong>Note:</strong> {selectedApp === 'retrospective' 
+              ? 'All team members can participate in retrospective sessions and add feedback items.'
+              : 'Only "Aakash" and "Mohith" can create and manage stories. Everyone else can participate in voting sessions.'
+            }
           </p>
         </div>
       </div>

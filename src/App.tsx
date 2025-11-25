@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Download, LogOut, Users, Zap, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Download, LogOut, Users, Zap, Wifi, WifiOff, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useSocket } from './hooks/useSocket';
 import { AuthModal } from './components/AuthModal';
+import { AppSelector } from './components/AppSelector';
+import { RetrospectiveApp } from './components/RetrospectiveApp';
 import { StoryModal } from './components/StoryModal';
 import { BulkStoryModal } from './components/BulkStoryModal';
 import { VotingSession } from './components/VotingSession';
 import { ExportModal } from './components/ExportModal';
 import { StoryManager } from './components/StoryManager';
 import { ToastProvider } from './context/ToastContext';
-import { LoadingOverlay } from './components/ui/LoadingStates';
+import RoomManager from './components/RoomManager';
+import RoomPage from './components/RoomPage';
 
 interface Story {
   id: string;
@@ -19,7 +22,8 @@ interface Story {
   updated_at: string;
 }
 
-function App() {
+// Home page component for non-room access
+function HomePage({ onBackToRooms }: { onBackToRooms?: () => void }) {
   const {
     connected,
     user,
@@ -38,12 +42,18 @@ function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [editingStory, setEditingStory] = useState<Story | null>(null);
   const [votingStory, setVotingStory] = useState<Story | null>(null);
+  const [selectedApp, setSelectedApp] = useState<'estimation' | 'retrospective' | null>(null);
+  const [showAppSelector, setShowAppSelector] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    // Show app selector first if no app is selected
+    if (!selectedApp) {
+      setShowAppSelector(true);
+    } else if (!user) {
+      // Show auth modal after app selection
       setShowAuthModal(true);
     }
-  }, [user]);
+  }, [user, selectedApp]);
 
   // Find active voting session to auto-show to all users
   useEffect(() => {
@@ -144,7 +154,26 @@ function App() {
   };
 
   const handleSignOut = async () => {
-    window.location.reload(); // Simple way to reset the app state
+    // Properly reset all application state instead of using window.location.reload()
+    try {
+      // Disconnect from socket and reset state
+      actions.disconnect();
+      
+      // Reset all local state
+      setShowAuthModal(false);
+      setShowStoryModal(false);
+      setShowBulkStoryModal(false);
+      setShowExportModal(false);
+      setEditingStory(null);
+      setVotingStory(null);
+      setSelectedApp(null);
+      setShowAppSelector(true);
+      
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Only fallback to reload if there's an actual error
+      window.location.reload();
+    }
   };
 
   const handleCreateStoryClick = () => {
@@ -154,6 +183,38 @@ function App() {
 
   const handleBulkImportClick = () => {
     setShowBulkStoryModal(true);
+  };
+
+  const handleAppSelect = (appType: 'estimation' | 'retrospective') => {
+    setSelectedApp(appType);
+    setShowAppSelector(false);
+    // Auth modal will be shown automatically by useEffect
+  };
+
+  const handleBackToSelector = () => {
+    // For solo mode, go back to rooms
+    if (onBackToRooms) {
+      onBackToRooms();
+      return;
+    }
+    
+    // For room mode, reset state
+    setSelectedApp(null);
+    setShowAppSelector(true);
+    
+    // Reset other modal states
+    setShowAuthModal(false);
+    setShowStoryModal(false);
+    setShowBulkStoryModal(false);
+    setShowExportModal(false);
+    setEditingStory(null);
+    setVotingStory(null);
+    
+    // If user exists, disconnect them from the current session
+    // They'll need to re-authenticate when selecting a new app
+    if (user) {
+      actions.disconnect();
+    }
   };
 
   if (!connected) {
@@ -202,6 +263,25 @@ function App() {
     );
   }
 
+  // Show app selector first (before authentication)
+  if (showAppSelector) {
+    return (
+      <ToastProvider>
+        <AppSelector onSelectApp={handleAppSelect} />
+      </ToastProvider>
+    );
+  }
+
+  // Show retrospective app if selected
+  if (selectedApp === 'retrospective' && user) {
+    return (
+      <ToastProvider>
+        <RetrospectiveApp user={user} onBackToSelector={handleBackToSelector} />
+      </ToastProvider>
+    );
+  }
+
+  // Show estimation app (original planning poker) if selected or as default
   return (
     <ToastProvider>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -210,6 +290,13 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
+              <button
+                onClick={handleBackToSelector}
+                className="mr-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Back to app selector"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
                 <Zap className="w-6 h-6 text-white" />
               </div>
@@ -320,6 +407,7 @@ function App() {
           actions.joinSession(displayName);
           setShowAuthModal(false);
         }}
+        selectedApp={selectedApp || undefined}
       />
 
       <StoryModal
@@ -358,6 +446,85 @@ function App() {
         />
       )}
     </div>
+    </ToastProvider>
+  );
+}
+
+// Main App component with simple URL-based routing
+function App() {
+  const [currentPage, setCurrentPage] = useState<'rooms' | 'room' | 'solo'>('rooms');
+  const [roomId, setRoomId] = useState<string | null>(null);
+
+  // Simple URL-based routing
+  useEffect(() => {
+    const path = window.location.pathname;
+    
+    if (path.startsWith('/room/')) {
+      const extractedRoomId = path.split('/')[2];
+      if (extractedRoomId) {
+        setRoomId(extractedRoomId);
+        setCurrentPage('room');
+      } else {
+        setCurrentPage('rooms');
+      }
+    } else if (path === '/solo') {
+      setCurrentPage('solo');
+    } else {
+      // Default to rooms page
+      setCurrentPage('rooms');
+      if (path !== '/rooms' && path !== '/') {
+        window.history.pushState({}, '', '/rooms');
+      }
+    }
+  }, []);
+
+  // Navigation helpers
+  const navigateToRooms = () => {
+    setCurrentPage('rooms');
+    setRoomId(null);
+    window.history.pushState({}, '', '/rooms');
+  };
+
+  const navigateToRoom = (id: string) => {
+    setCurrentPage('room');
+    setRoomId(id);
+    window.history.pushState({}, '', `/room/${id}`);
+  };
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      
+      if (path.startsWith('/room/')) {
+        const extractedRoomId = path.split('/')[2];
+        if (extractedRoomId) {
+          setRoomId(extractedRoomId);
+          setCurrentPage('room');
+        } else {
+          setCurrentPage('rooms');
+        }
+      } else if (path === '/solo') {
+        setCurrentPage('solo');
+      } else {
+        setCurrentPage('rooms');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  return (
+    <ToastProvider>
+      {currentPage === 'rooms' && <RoomManager onRoomJoin={navigateToRoom} />}
+      {currentPage === 'room' && roomId && (
+        <RoomPage 
+          roomId={roomId} 
+          onBackToRooms={navigateToRooms}
+        />
+      )}
+      {currentPage === 'solo' && <HomePage onBackToRooms={navigateToRooms} />}
     </ToastProvider>
   );
 }

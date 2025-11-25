@@ -54,6 +54,7 @@ interface VotingSessionProps {
     resetVoting: (storyId: string) => void;
     changeDeckType: (storyId: string, deckType: string) => void;
     endVotingSession: (storyId: string) => void;
+    saveFinalEstimate: (storyId: string, sessionId: string, finalEstimate: string) => void;
   };
 }
 
@@ -98,7 +99,7 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
       // If not found by userId, try by displayName (case insensitive)
       if (!userVote) {
         userVote = votes.find(vote => 
-          vote.displayName.toLowerCase() === user.displayName.toLowerCase()
+          vote?.displayName && user?.displayName && vote.displayName.toLowerCase() === user.displayName.toLowerCase()
         );
       }
       
@@ -203,9 +204,9 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
         });
       } else {
         // Fallback to counting by display names if we don't have userIds
-        const namesWhoVoted = new Set(votes.map(vote => vote.displayName.toLowerCase()));
+        const namesWhoVoted = new Set(votes.filter(v => v?.displayName).map(vote => vote.displayName.toLowerCase()));
         connectedUsers.forEach(user => {
-          if (namesWhoVoted.has(user.displayName.toLowerCase())) {
+          if (user?.displayName && namesWhoVoted.has(user.displayName.toLowerCase())) {
             voteCount++;
           }
         });
@@ -240,8 +241,8 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
       if (user) {
         const updatedVotes = [...votes];
         const existingVoteIndex = updatedVotes.findIndex(v => 
-          (v.userId && user.id && v.userId === user.id) || 
-          v.displayName.toLowerCase() === user.displayName.toLowerCase()
+          (v?.userId && user?.id && v.userId === user.id) || 
+          (v?.displayName && user?.displayName && v.displayName.toLowerCase() === user.displayName.toLowerCase())
         );
         
         if (existingVoteIndex >= 0) {
@@ -265,8 +266,8 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
       // Reset selected vote to previous value if there was an error
       if (user) {
         const userVote = votes.find(vote => 
-          (vote.userId && user.id && vote.userId === user.id) || 
-          vote.displayName.toLowerCase() === user.displayName.toLowerCase()
+          (vote?.userId && user?.id && vote.userId === user.id) || 
+          (vote?.displayName && user?.displayName && vote.displayName.toLowerCase() === user.displayName.toLowerCase())
         );
         if (userVote) {
           setSelectedVote(userVote.voteValue);
@@ -278,26 +279,28 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
   };
 
   const handleSavePoints = async () => {
-    if (!finalPoints.trim()) return;
+    if (!finalPoints.trim() || !session) {
+      showToast('Cannot save points: missing estimate or session.', 'error');
+      return;
+    }
     setSaveLoading(true);
     try {
-      console.log(`Saving points "${finalPoints}" for story ID: ${story.id}`);
-      await onSavePoints(story.id, finalPoints.trim());
+      console.log(`Saving final estimate "${finalPoints}" for story ID: ${story.id}, session ID: ${session.id}`);
+      
+      // Use new saveFinalEstimate action that saves all votes + final estimate to DB
+      actions.saveFinalEstimate(story.id, session.id, finalPoints.trim());
+      
       showToast(`Points saved: ${finalPoints}`, 'success');
       
-      // End the voting session explicitly
-      if (session) {
-        console.log(`Ending voting session for story ID: ${story.id}`);
-        actions.endVotingSession(story.id);
-      }
-      
-      // Force close the modal
-      onClose();
+      // Wait a moment for server to process, then close
+      setTimeout(() => {
+        onClose();
+      }, 500);
     } catch (error) {
       console.error('Error saving points:', error);
       showToast('Failed to save points. Please try again.', 'error');
     } finally {
-      setSaveLoading(false);
+      setTimeout(() => setSaveLoading(false), 600);
     }
   };
 
@@ -585,8 +588,8 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
                 {connectedUsers.map((participant, index) => {
                   // Check if this user has voted - try userId first, fallback to displayName
                   const hasVoted = votes.some(vote => 
-                    (vote.userId && participant.id && vote.userId === participant.id) || 
-                    (vote.displayName.toLowerCase() === participant.displayName.toLowerCase())
+                    (vote?.userId && participant?.id && vote.userId === participant.id) || 
+                    (vote?.displayName && participant?.displayName && vote.displayName.toLowerCase() === participant.displayName.toLowerCase())
                   );
                   
                   return (
