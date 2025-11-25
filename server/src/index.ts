@@ -47,6 +47,10 @@ app.use(cors({
 // Parse JSON bodies
 app.use(express.json());
 
+// Import and register REST API routes
+import roomsRouter from './routes/rooms.js';
+app.use('/api', roomsRouter);
+
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
   cors: {
     origin: [
