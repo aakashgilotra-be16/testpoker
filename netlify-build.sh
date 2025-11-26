@@ -19,6 +19,6 @@ echo "📦 Installing dependencies..."
 npm install --legacy-peer-deps
 
 echo "🏗️  Building frontend..."
-vite build
+npx vite build
 
 echo "✅ Build complete!"
