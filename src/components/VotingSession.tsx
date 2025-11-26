@@ -279,7 +279,10 @@ export const VotingSession: React.FC<VotingSessionProps> = ({
   };
 
   const handleSavePoints = async () => {
-    if (!finalPoints.trim() || !session) return;
+    if (!finalPoints.trim() || !session) {
+      showToast('Cannot save points: missing estimate or session.', 'error');
+      return;
+    }
     setSaveLoading(true);
     try {
       console.log(`Saving final estimate "${finalPoints}" for story ID: ${story.id}, session ID: ${session.id}`);

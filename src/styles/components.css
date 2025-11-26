@@ -128,11 +128,11 @@
 
 /* Modal Component Styles */
 .modal-backdrop {
-  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-[--z-modal-backdrop] flex items-center justify-center p-4;
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-[var(--z-modal-backdrop)] flex items-center justify-center p-4;
 }
 
 .modal {
-  @apply bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto z-[--z-modal];
+  @apply bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto z-[var(--z-modal)];
 }
 
 .modal__header {
