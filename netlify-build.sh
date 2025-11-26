@@ -16,7 +16,7 @@ console.log('✅ Removed workspaces from package.json');
 "
 
 echo "📦 Installing dependencies..."
-npm install --legacy-peer-deps
+npm install --include=dev --legacy-peer-deps
 
 echo "🏗️  Building frontend..."
 npx vite build
