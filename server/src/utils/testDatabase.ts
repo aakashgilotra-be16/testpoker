@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
-import Room from '../models/Room';
-import Story from '../models/Story';
-import VotingSession from '../models/VotingSession';
-import { Retrospective } from '../models/Retrospective';
+import Room from '../models/Room.js';
+import Story from '../models/Story.js';
+import VotingSession from '../models/VotingSession.js';
+import { Retrospective } from '../models/Retrospective.js';
 
 export async function testDatabaseCreation() {
   try {

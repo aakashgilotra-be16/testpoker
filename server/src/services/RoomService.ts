@@ -1,5 +1,5 @@
-import Room from '../models/Room';
-import { IRoom } from '../models/Room';
+import Room from '../models/Room.js';
+import { IRoom } from '../models/Room.js';
 
 export class RoomService {
   

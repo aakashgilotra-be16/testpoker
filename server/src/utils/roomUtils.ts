@@ -1,5 +1,5 @@
-import Room from '../models/Room';
-import { socketToUserId } from './dataStore';
+import Room from '../models/Room.js';
+import { socketToUserId } from './dataStore.js';
 
 /**
  * Check if a user is an admin of a room (host or facilitator)

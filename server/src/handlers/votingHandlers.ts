@@ -1,11 +1,11 @@
 import { Socket } from 'socket.io';
-import type { ClientToServerEvents, ServerToClientEvents, VotingSession as VotingSessionType } from '../types/index';
-import { connectedUsers, userRooms, votingSessions, votes, getOrCreateRoomData, temporaryVotes } from '../utils/dataStore';
-import { requireRoomAdmin } from '../utils/roomUtils';
-import { VotingService } from '../services/VotingService';
-import Story from '../models/Story';
-import VotingSession from '../models/VotingSession';
-import Vote from '../models/Vote';
+import type { ClientToServerEvents, ServerToClientEvents, VotingSession as VotingSessionType } from '../types/index.js';
+import { connectedUsers, userRooms, votingSessions, votes, getOrCreateRoomData, temporaryVotes } from '../utils/dataStore.js';
+import { requireRoomAdmin } from '../utils/roomUtils.js';
+import { VotingService } from '../services/VotingService.js';
+import Story from '../models/Story.js';
+import VotingSession from '../models/VotingSession.js';
+import Vote from '../models/Vote.js';
 
 type SocketType = Socket<ClientToServerEvents, ServerToClientEvents>;
 

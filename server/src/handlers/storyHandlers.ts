@@ -1,8 +1,8 @@
 import { Socket } from 'socket.io';
-import type { ClientToServerEvents, ServerToClientEvents } from '../types/index';
-import { connectedUsers, userRooms, getOrCreateRoomData } from '../utils/dataStore';
-import { requireRoomAdmin } from '../utils/roomUtils';
-import { StoryService } from '../services/StoryService';
+import type { ClientToServerEvents, ServerToClientEvents } from '../types/index.js';
+import { connectedUsers, userRooms, getOrCreateRoomData } from '../utils/dataStore.js';
+import { requireRoomAdmin } from '../utils/roomUtils.js';
+import { StoryService } from '../services/StoryService.js';
 
 type SocketType = Socket<ClientToServerEvents, ServerToClientEvents>;
 

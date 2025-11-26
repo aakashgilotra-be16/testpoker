@@ -3,7 +3,7 @@ import type {
   Story as StoryType,
   VotingSession as VotingSessionType,
   Vote as VoteType
-} from '../types/index';
+} from '../types/index.js';
 
 // ===== IN-MEMORY STORAGE =====
 // Room-based storage
