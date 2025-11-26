@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io';
-import type { ClientToServerEvents, ServerToClientEvents, SocketUser } from '../types/index';
-import { connectedUsers, userRooms, roomConnectedUsers, getOrCreateRoomData, socketToUserId } from '../utils/dataStore';
-import { StoryService } from '../services/StoryService';
+import type { ClientToServerEvents, ServerToClientEvents, SocketUser } from '../types/index.js';
+import { connectedUsers, userRooms, roomConnectedUsers, getOrCreateRoomData, socketToUserId } from '../utils/dataStore.js';
+import { StoryService } from '../services/StoryService.js';
 
 type SocketType = Socket<ClientToServerEvents, ServerToClientEvents>;
 
@@ -11,7 +11,7 @@ export const setupRoomHandlers = (socket: SocketType, io: any, currentRoom: { va
     try {
       const { name, description, settings, hostName, hostDisplayName } = data;
       const hostId = socket.id;
-      const { RoomService } = await import('../services/RoomService');
+      const { RoomService } = await import('../services/RoomService.js');
       
       const room = await RoomService.createRoom(hostId, { name, description, settings });
       
@@ -55,7 +55,7 @@ export const setupRoomHandlers = (socket: SocketType, io: any, currentRoom: { va
     try {
       const { roomId, userId, name, displayName } = data;
       const role = 'participant';
-      const { RoomService } = await import('../services/RoomService');
+      const { RoomService } = await import('../services/RoomService.js');
       
       if (!RoomService.isValidRoomCode(roomId)) {
         socket.emit('error', { message: 'Invalid room code format' });
@@ -184,7 +184,7 @@ export const setupRoomHandlers = (socket: SocketType, io: any, currentRoom: { va
     try {
       const user = connectedUsers[socket.id];
       if (user) {
-        const { RoomService } = await import('../services/RoomService');
+        const { RoomService } = await import('../services/RoomService.js');
         await RoomService.leaveRoom(currentRoom.value, socket.id);
         
         socket.leave(currentRoom.value);
@@ -211,7 +211,7 @@ export const setupRoomHandlers = (socket: SocketType, io: any, currentRoom: { va
       const { roomId, targetUserId } = data;
       const requesterId = socket.id;
 
-      const { RoomService } = await import('../services/RoomService');
+      const { RoomService } = await import('../services/RoomService.js');
       const room = await RoomService.promoteToAdmin(roomId, requesterId, targetUserId);
 
       if (room) {
@@ -243,7 +243,7 @@ export const setupRoomHandlers = (socket: SocketType, io: any, currentRoom: { va
       const { roomId, targetUserId } = data;
       const requesterId = socket.id;
 
-      const { RoomService } = await import('../services/RoomService');
+      const { RoomService } = await import('../services/RoomService.js');
       const room = await RoomService.demoteFromAdmin(roomId, requesterId, targetUserId);
 
       if (room) {
@@ -273,7 +273,7 @@ export const setupRoomHandlers = (socket: SocketType, io: any, currentRoom: { va
   socket.on('get_room_admins', async (data) => {
     try {
       const { roomId } = data;
-      const { RoomService } = await import('../services/RoomService');
+      const { RoomService } = await import('../services/RoomService.js');
       const admins = await RoomService.getRoomAdmins(roomId);
       
       socket.emit('room_admins_list', { roomId, admins });

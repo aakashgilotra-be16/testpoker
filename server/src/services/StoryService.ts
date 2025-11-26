@@ -1,5 +1,5 @@
-import Story, { IStory } from '../models/Story';
-import Room from '../models/Room';
+import Story, { IStory } from '../models/Story.js';
+import Room from '../models/Room.js';
 import { Types } from 'mongoose';
 
 export interface CreateStoryData {

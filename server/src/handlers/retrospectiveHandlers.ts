@@ -6,9 +6,9 @@ import type {
   RetrospectiveItem, 
   RetrospectiveVote, 
   RetrospectiveSession 
-} from '../types/index';
-import { getSchemeConfig } from '../utils/retrospectiveSchemes';
-import { generateAIActionItems, checkAIServiceHealth } from '../services/AIService';
+} from '../types/index.js';
+import { getSchemeConfig } from '../utils/retrospectiveSchemes.js';
+import { generateAIActionItems, checkAIServiceHealth } from '../services/AIService.js';
 
 type SocketType = Socket<ClientToServerEvents, ServerToClientEvents>;
 

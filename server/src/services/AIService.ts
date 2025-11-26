@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { RetrospectiveItem } from '../types/index';
+import type { RetrospectiveItem } from '../types/index.js';
 
 // Configuration
 const MAX_RETRIES = 3;

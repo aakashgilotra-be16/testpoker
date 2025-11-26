@@ -1,8 +1,8 @@
-import VotingSession, { IVotingSession } from '../models/VotingSession';
-import Vote, { IVote } from '../models/Vote';
-import Story from '../models/Story';
-import Room from '../models/Room';
-import { temporaryVotes } from '../utils/dataStore';
+import VotingSession, { IVotingSession } from '../models/VotingSession.js';
+import Vote, { IVote } from '../models/Vote.js';
+import Story from '../models/Story.js';
+import Room from '../models/Room.js';
+import { temporaryVotes } from '../utils/dataStore.js';
 
 export interface CreateVotingSessionData {
   storyId: string;
